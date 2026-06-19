@@ -1,2 +1,3 @@
-import EventEmitter from 'events';
-export default new EventEmitter();
+import EventBus from "./eventBus";
+
+export default new EventBus();

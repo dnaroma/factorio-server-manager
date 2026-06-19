@@ -1,6 +1,6 @@
-@import "tailwindcss/base";
-@import "tailwindcss/utilities";
-@import "tailwindcss/components";
+@tailwind base;
+@tailwind utilities;
+@tailwind components;
 
 .accentuated-t {
   border-top: 2px solid rgba(255, 255, 255, 0.1);

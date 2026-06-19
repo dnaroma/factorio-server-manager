@@ -1,6 +1,7 @@
 FROM alpine:latest as build
 
-RUN apk add --no-cache git make musl-dev go nodejs npm zip mingw-w64-gcc
+RUN apk add --no-cache git make musl-dev go nodejs npm zip mingw-w64-gcc \
+    && corepack enable
 
 ENV GOROOT /usr/lib/go
 ENV GOPATH /go

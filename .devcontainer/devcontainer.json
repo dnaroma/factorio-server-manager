@@ -1,0 +1,23 @@
+{
+  "name": "Factorio Server Manager",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "CI": "true",
+    "FSM_MODPACK_DIR": "dev_pack",
+    "FSM_DIR": "../",
+    "FSM_CONF": "../../conf.json.example"
+  },
+  "postCreateCommand": "mise trust && mise install && mise exec -- pnpm install --frozen-lockfile",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "hverlin.mise-vscode",
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}
