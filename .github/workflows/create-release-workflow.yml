@@ -6,9 +6,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '26.3.1'
+      - run: corepack enable
       - uses: actions/setup-go@v2
       - name: Install mingw-w64
         run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib gcc-mingw-w64 g++-mingw-w64
@@ -45,9 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '26.3.1'
+      - run: corepack enable
       - uses: actions/setup-go@v2
       - uses: docker/setup-buildx-action@v1
       - name: Get git tag
@@ -65,4 +67,3 @@ jobs:
           file: ./docker/Dockerfile-local
           push: true
           tags: ofsm/ofsm:latest,ofsm/ofsm:${{ steps.tag_name.outputs.tag }}
-
