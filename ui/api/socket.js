@@ -1,6 +1,6 @@
-import EventEmitter from "events";
+import EventBus from "../eventBus";
 
-const bus = new EventEmitter();
+const bus = new EventBus();
 
 const ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
 

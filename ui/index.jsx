@@ -3,6 +3,7 @@ import Bus from "./notifications"
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App/App.jsx';
+import './index.scss';
 
 window.flash = (message, color="gray-light") => Bus.emit('flash', ({message, color}));
 

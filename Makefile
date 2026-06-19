@@ -22,7 +22,7 @@ build/factorio-server-manager-%.zip: clean app/bundle factorio-server-manager-%
 
 app/bundle:
 	@echo "Building Frontend"
-	@npm install && npm run build
+	@CI=true pnpm install --frozen-lockfile && pnpm run build
 
 factorio-server-manager-linux:
 	@echo "Building Backend - Linux"
@@ -46,6 +46,7 @@ clean:
 	@-rm app/bundle.js.map
 	@-rm app/style.css
 	@-rm app/style.css.map
+	@-rm -r app/assets/
 	@-rm -r app/fonts/vendor/
 	@-rm -r app/images/vendor/
 	@-rm -rf node_modules/
