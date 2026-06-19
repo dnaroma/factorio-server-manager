@@ -1,4 +1,5 @@
 node_modules/
+.pnpm-store/
 dev/
 dev_packs/
 factorio-server-manager*
@@ -14,6 +15,7 @@ factorio.auth
 /pkg/
 mix-manifest.json
 /app/**/vendor/
+/app/assets/
 /app/*.js*
 /app/*.css*
 .vscode
