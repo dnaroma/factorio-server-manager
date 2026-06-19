@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -103,7 +104,7 @@ func ModPortalModDetails(modId string) (ModPortalStruct, error, int) {
 	return mod, nil, resp.StatusCode
 }
 
-//Log the user into factorio, so mods can be downloaded
+// Log the user into factorio, so mods can be downloaded
 func FactorioLogin(username string, password string) (error, int) {
 	var err error
 
@@ -139,6 +140,27 @@ func FactorioLogin(username string, password string) (error, int) {
 	}
 
 	err = credentials.Save()
+	if err != nil {
+		return err, http.StatusInternalServerError
+	}
+
+	return nil, http.StatusOK
+}
+
+func FactorioApiKeyLogin(username string, apiKey string) (error, int) {
+	username = strings.TrimSpace(username)
+	apiKey = strings.TrimSpace(apiKey)
+
+	if username == "" || apiKey == "" {
+		return errors.New("username and API key are required"), http.StatusBadRequest
+	}
+
+	credentials := Credentials{
+		Username: username,
+		Userkey:  apiKey,
+	}
+
+	err := credentials.Save()
 	if err != nil {
 		return err, http.StatusInternalServerError
 	}

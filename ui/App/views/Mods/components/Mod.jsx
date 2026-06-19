@@ -16,6 +16,9 @@ const Mod = ({mod, factorioVersion, toggleMod, deleteMod, updateMod, addUpdatabl
 
     const [newVersion, setNewVersion] = useState(null)
     const [icon, setIcon] = useState(faArrowCircleUp)
+    const toggleClassName = mod.enabled
+        ? "bg-green hover:bg-green-light hover:glow-green"
+        : "bg-red hover:bg-red-light hover:glow-red";
 
     useEffect(() => {
         if (!disabled) {
@@ -75,14 +78,13 @@ const Mod = ({mod, factorioVersion, toggleMod, deleteMod, updateMod, addUpdatabl
                             ? <FontAwesomeIcon className="text-green" icon={faCheck}/>
                             : <FontAwesomeIcon className="text-red" icon={faTimes}/>
                         :
-                        mod.enabled
-                            ? <FontAwesomeIcon className="cursor-pointer hover:text-green-light text-green"
-                                               icon={faToggleOn}
-                                               onClick={() => toggleMod(mod.name)}/>
-                            :
-                            <FontAwesomeIcon className="cursor-pointer hover:text-red-light text-red"
-                                             icon={faToggleOff}
-                                             onClick={() => toggleMod(mod.name)}/>
+                        <button
+                            type="button"
+                            className={`inline-flex items-center justify-center w-24 py-1 px-3 accentuated text-black font-bold ${toggleClassName}`}
+                            onClick={() => toggleMod(mod.name)}>
+                            <FontAwesomeIcon className="mr-2" icon={mod.enabled ? faToggleOn : faToggleOff}/>
+                            {mod.enabled ? "Enabled" : "Disabled"}
+                        </button>
                 }
             </td>
             <td className="pr-4">
@@ -114,4 +116,3 @@ const Mod = ({mod, factorioVersion, toggleMod, deleteMod, updateMod, addUpdatabl
 }
 
 export default Mod;
-
