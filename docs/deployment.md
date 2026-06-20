@@ -8,6 +8,8 @@ Deploy with one of these paths:
 - Docker Compose without HTTPS: `docker/docker-compose.simple.yaml`.
 - Release bundle from `make build`.
 
+The compose files use the GHCR image `ghcr.io/dnaroma/factorio-server-manager:latest`.
+
 ## Docker Compose
 
 Copy the compose file to the host:
@@ -101,4 +103,4 @@ Publishing a GitHub release triggers `.github/workflows/create-release-workflow.
 
 - builds Linux and Windows release zips,
 - uploads them to the GitHub release,
-- builds and pushes Docker images.
+- builds and pushes GHCR Docker images with `GITHUB_TOKEN`.
