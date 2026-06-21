@@ -8,12 +8,12 @@ jobs:
   add-assets-to-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: '26.3.1'
       - run: corepack enable
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v6
       - name: Get git tag
         id: tag_name
         uses: little-core-labs/get-git-tag@v3.0.2
@@ -37,12 +37,12 @@ jobs:
     needs: ['add-assets-to-release']
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: '26.3.1'
       - run: corepack enable
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v6
       - uses: docker/setup-buildx-action@v1
       - name: Get git tag
         id: tag_name
