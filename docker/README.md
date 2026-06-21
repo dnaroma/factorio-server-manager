@@ -74,6 +74,14 @@ If you want to update Factorio to the latest version:
 
 After container starts, latest Factorio version will be downloaded and installed.
 
+## Save backups
+
+Manual save backups created in the UI are stored below `/opt/factorio/saves/backups`. The example Compose files mount `/opt/factorio/saves` to `./factorio-data/saves`, so backups persist across container restarts with the save files.
+
+Restore operations write a temporary file in the saves volume and then rename it into place. This avoids partially restored saves when the container is stopped during a restore.
+
+These backups are on the same Docker volume as the saves. Back up `./factorio-data/saves` separately if you need protection from host disk or volume loss.
+
 ## Security
 
 Authentication is supported in the application, but it is recommended to ensure access to the Factorio manager UI is accessible via VPN or internal network.
