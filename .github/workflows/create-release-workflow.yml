@@ -14,8 +14,6 @@ jobs:
           node-version: '26.3.1'
       - run: corepack enable
       - uses: actions/setup-go@v2
-      - name: Install mingw-w64
-        run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib gcc-mingw-w64 g++-mingw-w64
       - name: Get git tag
         id: tag_name
         uses: little-core-labs/get-git-tag@v3.0.2
@@ -26,15 +24,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Create release bundles
         run: make gen_release
-      - name: Upload release (windows)
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ./build/factorio-server-manager-windows.zip
-          asset_name: factorio-server-manager-windows-${{ steps.tag_name.outputs.tag }}.zip
-          asset_content_type: application/octet-stream
       - name: Upload release (linux)
         uses: actions/upload-release-asset@v1.0.2
         env:
