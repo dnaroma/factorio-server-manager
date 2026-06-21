@@ -23,11 +23,11 @@ This roadmap focuses on features that make Factorio Server Manager more useful f
 
 ### Save Management
 
-- Add manual backup and restore for saves. Done.
+- [x] Add manual backup and restore for saves.
 - Add scheduled save backups with retention limits.
 - Show save metadata where available: map name, play time, Factorio version, mods used, and last modified time.
-- Add duplicate/rename save actions. Done.
-- Add a "backup before delete" option for save removal. Done.
+- [x] Add duplicate/rename save actions.
+- [x] Add a "backup before delete" option for save removal.
 
 ### Server Settings
 
@@ -41,8 +41,10 @@ This roadmap focuses on features that make Factorio Server Manager more useful f
 
 ### Factorio Version Management
 
-- Show installed Factorio version, latest stable version, and latest experimental version.
-- Add controlled upgrade and rollback flow from the UI.
+- [x] Show installed Factorio version, latest stable version, and latest experimental version.
+- [x] Defer Factorio server download until requested from the UI.
+- [x] Add Factorio server install progress/status in the UI.
+- [x] Add controlled upgrade flow from the UI.
 - Require a save backup before upgrading or downgrading.
 - Check save and mod compatibility before starting after a version change.
 - Avoid re-downloading Factorio if the requested version is already installed.
@@ -57,6 +59,7 @@ This roadmap focuses on features that make Factorio Server Manager more useful f
 
 ### Player Administration
 
+- [x] Allow predefined initial admin credentials.
 - Show online players through RCON.
 - Add kick, ban, unban, promote, demote, whitelist, and unwhitelist actions.
 - Add editable admin, banlist, and whitelist files from the UI.
@@ -102,7 +105,11 @@ This roadmap focuses on features that make Factorio Server Manager more useful f
 
 ## Supporting Work
 
-- Harden save, mod, and mod pack filenames against unsafe paths.
+- [x] Harden save filenames against unsafe paths.
+- [x] Remove Windows release, CI, and runtime support; target Linux deployments only.
+- [x] Fix Docker release bundle build path for macOS hosts targeting Linux.
+- [x] Automate GitHub release bundles and GHCR Docker image publishing.
+- [x] Update GitHub Actions runtime action versions for current runners.
 - Add consistent JSON errors for API calls.
 - Add frontend tests for mod, save, settings, and startup workflows.
 - Add backend tests for file validation, mod pack loading, settings writes, and RCON actions.
