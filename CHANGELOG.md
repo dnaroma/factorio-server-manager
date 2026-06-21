@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Configuration environment variables are now uppercase and prefixed with FSM
 - updated all dependencies - Thanks to @jannaahs and @knoxfighter
 - removed CGO as dependency
+- Removed non-Linux release and runtime support; deployments are Linux-only.
 
 ## [0.10.1] - 2021-03-09
 ### Fixed
@@ -31,7 +32,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 - old factorio versions depended by mods always shown as compatible - Thanks to @knoxfighter
-- Crosscompilation with mingw-w64 on linux. (Broke with sqlite3) - Thanks to @knoxfighter
 - Crash on async writing to websocket room array. - Thanks to @knoxfighter
 
 ## [0.9.0] - 2021-01-07
@@ -71,9 +71,7 @@ Special thanks to @knoxfighter for all the contributions.
 - Login Page Design
 - Sweetalert2 API changes
 - allow_commands not misinterpreted as boolean anymore
-- Fixed some filepaths on windows
 - Fixed hardcoded Settings Path
-- Fixed Upgrading, Removing Mods on Windows results in error
 
 ## [0.8.1] - 2019-03-01
 ### Fixed
@@ -125,7 +123,6 @@ This release moves the server-settings.json config file. It will now save the fi
 - Started adding UI for editing the server-settings.json file
 
 ## [0.5.0] - 2016-10-11
-- This release adds beta support for Windows users.
 - Various updates for Factorio 0.14 are also included.
 
 ## [0.4.3] - 2016-09-15
