@@ -51,9 +51,18 @@ const LoadMods = ({refreshMods}) => {
 
         const mods = (saveHeader.mods || []).filter(mod => mod.name !== "base");
         if (mods.length === 0) {
-            setIsLoading(false);
-            setLoadModsData(undefined);
-            window.flash(`Save file ${data.save} does not list any installable mods.`, "red");
+            await modResource.deleteAll()
+                .then(() => {
+                    refreshMods();
+                    window.flash(`Save file ${data.save} does not require portal mods. Installed mods were removed.`, "green");
+                })
+                .catch(() => {
+                    window.flash(`Could not remove installed mods for save file ${data.save}.`, "red");
+                })
+                .finally(() => {
+                    setIsLoading(false);
+                    setLoadModsData(undefined);
+                });
             return;
         }
 
