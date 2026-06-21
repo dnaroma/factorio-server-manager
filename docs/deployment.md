@@ -28,6 +28,8 @@ Set environment values:
 
 - `FACTORIO_VERSION`: `stable`, `latest`, or a specific Factorio version.
 - `RCON_PASS`: optional RCON password. If empty, one is generated.
+- `FSM_ADMIN_USERNAME`: initial web admin username. Defaults to `admin`.
+- `FSM_ADMIN_PASSWORD`: initial web admin password. If empty, one is generated.
 - `DOMAIN_NAME`: required by the Traefik compose file.
 - `EMAIL_ADDRESS`: required by Let's Encrypt in the Traefik compose file.
 
@@ -69,6 +71,8 @@ If `RCON_PASS` is empty, check the generated value in:
 ```text
 fsm-data/conf.json
 ```
+
+`FSM_ADMIN_USERNAME` and `FSM_ADMIN_PASSWORD` are used only when the user database is empty. They do not reset existing users after `fsm-data/sqlite.db` exists.
 
 If no admin password was configured, check container logs:
 

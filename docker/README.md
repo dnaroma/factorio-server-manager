@@ -11,6 +11,8 @@ Copy `docker-compose.yaml` and `.env` files from this repository to somewhere on
 Edit values in the `.env` file:
 * `RCON_PASS` (default empty string): Password for Factorio RCON (FSM uses it to communicate with the Factorio server). \
   If left empty, a random password will be generated and saved on the first start of the server. You can see the password in `fsm-data/conf.json` file.
+* `FSM_ADMIN_USERNAME` (default `admin`): Initial web admin username. Used only when the user database is empty.
+* `FSM_ADMIN_PASSWORD` (default empty string): Initial web admin password. If left empty, a random password is generated and logged on first start. Used only when the user database is empty.
 * `DOMAIN_NAME` (must be set manually): The domain name where your FSM UI will be available. Must be set,
   so [Let's Encrypt](https://letsencrypt.org/) service can issue a valid HTTPS certificate for this domain.
 * `EMAIL_ADDRESS` (must be set manually): Your email address. Used only by Let's Encrypt service.
@@ -59,6 +61,8 @@ a couple of minutes, if configuration parameters are set correctly.
 ## Updating Credentials, adding and deleting users.
 
 An admin user is created initially using the credentials defined in the factorio-server-manager config file. When you haven't specified one, a random password will be logged in the container output (`docker logs factorio-server-manager`).
+
+Set `FSM_ADMIN_USERNAME` and `FSM_ADMIN_PASSWORD` before the first startup to predefine the initial web admin credentials. These values do not reset existing users after `fsm-data/sqlite.db` has been created.
 
 Users can be added and deleted on the settings page.
 

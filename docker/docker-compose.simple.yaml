@@ -7,6 +7,8 @@ services:
     environment:
       - "FACTORIO_VERSION=stable"
       - "RCON_PASS"
+      - "FSM_ADMIN_USERNAME"
+      - "FSM_ADMIN_PASSWORD"
     ports:
       - "80:80"
       - "34197:34197/udp"
