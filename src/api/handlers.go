@@ -135,7 +135,11 @@ func DLSave(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	config := bootstrap.GetConfig()
 	vars := mux.Vars(r)
-	save := vars["save"]
+	save, err := factorio.ValidateSaveName(vars["save"])
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Invalid save name: %s", err), http.StatusBadRequest)
+		return
+	}
 	saveName := filepath.Join(config.FactorioSavesDir, save)
 
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", save))
@@ -157,6 +161,13 @@ func UploadSave(w http.ResponseWriter, r *http.Request) {
 	config := bootstrap.GetConfig()
 
 	for _, saveFile := range r.MultipartForm.File["savefile"] {
+		fileName, err := factorio.ValidateSaveName(saveFile.Filename)
+		if err != nil {
+			resp = fmt.Sprintf("Invalid save file name: %s", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
 		ext := filepath.Ext(saveFile.Filename)
 		if ext != ".zip" {
 			// Only zip-files allowed
@@ -174,7 +185,7 @@ func UploadSave(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
-		out, err := os.Create(filepath.Join(config.FactorioSavesDir, saveFile.Filename))
+		out, err := os.Create(filepath.Join(config.FactorioSavesDir, fileName))
 		if err != nil {
 			resp = fmt.Sprintf("Error creating new savefile to copy uploaded on to: %s", err)
 			log.Println(resp)
@@ -242,8 +253,9 @@ func CreateSaveHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	saveName := vars["save"]
 
-	if saveName == "" {
-		resp = fmt.Sprintf("Error creating save, no save name provided: %s", err)
+	saveName, err = factorio.ValidateSaveName(saveName)
+	if err != nil {
+		resp = fmt.Sprintf("Error creating save: %s", err)
 		log.Println(resp)
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -259,6 +271,129 @@ func CreateSaveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp = fmt.Sprintf("Save %s created successfully. Command output: \n%s", saveName, cmdOut)
+}
+
+func ListSaveBackups(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	respBackups, err := factorio.ListSaveBackups()
+	if err != nil {
+		resp = fmt.Sprintf("Error listing save backups: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp = respBackups
+}
+
+func BackupSave(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	vars := mux.Vars(r)
+	backup, err := factorio.BackupSave(vars["save"])
+	if err != nil {
+		resp = fmt.Sprintf("Error backing up save {%s}: %s", vars["save"], err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp = backup
+}
+
+func RestoreSave(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	var restoreRequest struct {
+		BackupName string `json:"backup_name"`
+		TargetName string `json:"target_name"`
+	}
+	resp, err := ReadFromRequestBody(w, r, &restoreRequest)
+	if err != nil {
+		return
+	}
+
+	save, err := factorio.RestoreSave(restoreRequest.BackupName, restoreRequest.TargetName)
+	if err != nil {
+		resp = fmt.Sprintf("Error restoring save backup {%s}: %s", restoreRequest.BackupName, err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp = save
+}
+
+func RenameSave(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	var renameRequest struct {
+		Name    string `json:"name"`
+		NewName string `json:"new_name"`
+	}
+	resp, err := ReadFromRequestBody(w, r, &renameRequest)
+	if err != nil {
+		return
+	}
+
+	save, err := factorio.RenameSave(renameRequest.Name, renameRequest.NewName)
+	if err != nil {
+		resp = fmt.Sprintf("Error renaming save {%s}: %s", renameRequest.Name, err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp = save
+}
+
+func DuplicateSave(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	var duplicateRequest struct {
+		Name    string `json:"name"`
+		NewName string `json:"new_name"`
+	}
+	resp, err := ReadFromRequestBody(w, r, &duplicateRequest)
+	if err != nil {
+		return
+	}
+
+	save, err := factorio.DuplicateSave(duplicateRequest.Name, duplicateRequest.NewName)
+	if err != nil {
+		resp = fmt.Sprintf("Error duplicating save {%s}: %s", duplicateRequest.Name, err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp = save
 }
 
 // LogTail returns last lines of the factorio-current.log file

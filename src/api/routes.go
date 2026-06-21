@@ -166,6 +166,36 @@ var apiRoutes = Routes{
 		CreateSaveHandler,
 		true,
 	}, {
+		"ListSaveBackups",
+		"GET",
+		"/saves/backups",
+		ListSaveBackups,
+		false,
+	}, {
+		"BackupSave",
+		"POST",
+		"/saves/backup/{save}",
+		BackupSave,
+		false,
+	}, {
+		"RestoreSave",
+		"POST",
+		"/saves/restore",
+		RestoreSave,
+		true,
+	}, {
+		"RenameSave",
+		"POST",
+		"/saves/rename",
+		RenameSave,
+		true,
+	}, {
+		"DuplicateSave",
+		"POST",
+		"/saves/duplicate",
+		DuplicateSave,
+		false,
+	}, {
 		"LoadModsFromSave",
 		"POST",
 		"/saves/mods",
