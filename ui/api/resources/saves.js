@@ -21,6 +21,18 @@ export default {
         const response = await client.post(`/api/saves/backup/${save.name}`);
         return response.data;
     },
+    backupSchedule: async () => {
+        const response = await client.get('/api/saves/backup/schedule');
+        return response.data;
+    },
+    updateBackupSchedule: async (schedule) => {
+        const response = await client.post('/api/saves/backup/schedule', schedule);
+        return response.data;
+    },
+    runBackupSchedule: async () => {
+        const response = await client.post('/api/saves/backup/schedule/run');
+        return response.data;
+    },
     restore: async (backup, targetName) => {
         const response = await client.post('/api/saves/restore', {
             backup_name: backup.name,

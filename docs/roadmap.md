@@ -24,8 +24,8 @@ This roadmap focuses on features that make Factorio Server Manager more useful f
 ### Save Management
 
 - [x] Add manual backup and restore for saves.
-- [ ] Add scheduled save backups with retention limits.
-- [ ] Show save metadata where available: map name, play time, Factorio version, mods used, and last modified time.
+- [x] Add scheduled save backups with retention limits.
+- [x] Show save metadata where available: map name, play time, Factorio version, mods used, and last modified time.
 - [x] Add duplicate/rename save actions.
 - [x] Add a "backup before delete" option for save removal.
 
