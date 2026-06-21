@@ -12,11 +12,11 @@
 
 CI runs:
 
-- `make app/bundle` on Ubuntu and Windows.
-- `go test ./... -v -test.short` on Ubuntu and Windows when Factorio credentials are not configured.
+- `make app/bundle` on Ubuntu.
+- `go test ./... -v -test.short` on Ubuntu when Factorio credentials are not configured.
 - Full Go tests when `FACTORIO_USERNAME` and `FACTORIO_PASSWORD` secrets are available.
 
-Run short Go tests in Linux when possible because process health code is platform-specific.
+Run Go tests in Linux because this project targets Linux server deployments.
 
 ## Configuration Files
 

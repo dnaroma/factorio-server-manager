@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/gorilla/securecookie"
@@ -234,12 +233,7 @@ func (config *Config) mapFlags(flags Flags) {
 		config.FactorioBinary = filepath.Join(flags.FactorioDir, flags.FactorioBinary)
 	}
 
-	if runtime.GOOS == "windows" {
-		appdata := os.Getenv("APPDATA")
-		config.FactorioLog = filepath.Join(appdata, "Factorio", "factorio-current.log")
-	} else {
-		config.FactorioLog = filepath.Join(config.FactorioDir, "factorio-current.log")
-	}
+	config.FactorioLog = filepath.Join(config.FactorioDir, "factorio-current.log")
 }
 
 func failOnError(err error, msg string) {

@@ -1,14 +1,9 @@
-// use this file only when compiling not windows (all unix systems)
-// +build !windows
-
 package factorio
 
 import (
 	"log"
 	"os"
 )
-
-// Stubs for windows-only functions
 
 func (server *Server) Kill() error {
 	err := server.Cmd.Process.Signal(os.Kill)

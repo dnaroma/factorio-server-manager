@@ -101,6 +101,6 @@ The output zip is written under `build/`. It contains the backend binary, genera
 
 Publishing a GitHub release triggers `.github/workflows/create-release-workflow.yml`, which:
 
-- builds Linux and Windows release zips,
+- builds the Linux release zip,
 - uploads them to the GitHub release,
 - builds and pushes GHCR Docker images with `GITHUB_TOKEN`.

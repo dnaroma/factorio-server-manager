@@ -7,4 +7,4 @@ echo "Creating build..."
 make gen_release
 echo "Copying build artifacts from ${PWD}"
 mkdir -p /build
-cp -v build/factorio-server-manager-linux.zip build/factorio-server-manager-windows.zip /build/
+cp -v build/factorio-server-manager-linux.zip /build/
