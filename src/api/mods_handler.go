@@ -86,7 +86,7 @@ func ModToggleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err, resp = mods.ModSimpleList.ToggleMod(data.Name)
+	err, resp = mods.ToggleModWithDependencyCheck(data.Name)
 	if err != nil {
 		resp = fmt.Sprintf("Error in toggling mod in simple list: %s", err)
 		log.Println(resp)
@@ -120,7 +120,7 @@ func ModDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = modList.DeleteMod(data.Name)
+	err = modList.DeleteModWithDependencyCheck(data.Name)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		resp = fmt.Sprintf("Error in deleting mod {%s}: %s", data.Name, err)
@@ -183,6 +183,11 @@ func ModUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	err = mods.UpdateMod(modData.Name, modData.DownloadUrl, modData.Filename)
 	if err != nil {
 		resp = fmt.Sprintf("Error updating mod {%s}: %s", modData.Name, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if issues := mods.ValidateEnabledDependencies(); len(issues) > 0 {
+		resp = fmt.Sprintf("Error updating mod {%s}: dependency validation failed: %v", modData.Name, issues)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

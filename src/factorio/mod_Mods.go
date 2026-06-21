@@ -11,6 +11,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/OpenFactorioServerManager/factorio-server-manager/lockfile"
 )
@@ -90,6 +91,165 @@ func (mods *Mods) DeleteMod(modName string) error {
 	}
 
 	return nil
+}
+
+func (mods *Mods) DeleteModWithDependencyCheck(modName string) error {
+	if err := mods.ValidateModCanDisable(modName); err != nil {
+		return err
+	}
+
+	return mods.DeleteMod(modName)
+}
+
+func (mods *Mods) ToggleModWithDependencyCheck(modName string) (error, bool) {
+	enabled, found := mods.isModEnabled(modName)
+	if !found {
+		return errors.New("mod is not installed"), false
+	}
+
+	if enabled {
+		if err := mods.ValidateModCanDisable(modName); err != nil {
+			return err, enabled
+		}
+	} else if err := mods.ValidateModCanEnable(modName); err != nil {
+		return err, enabled
+	}
+
+	return mods.ModSimpleList.ToggleMod(modName)
+}
+
+func (mods *Mods) ValidateModCanEnable(modName string) error {
+	modInfo, ok := mods.modInfoByName(modName)
+	if !ok {
+		return fmt.Errorf("mod %s is not installed", modName)
+	}
+
+	missing := make([]string, 0)
+	for _, dependency := range requiredDependencyNames(modInfo.Dependencies) {
+		if _, ok := mods.modInfoByName(dependency); !ok {
+			missing = append(missing, dependency+" (not installed)")
+			continue
+		}
+		if enabled, ok := mods.isModEnabled(dependency); !ok || !enabled {
+			missing = append(missing, dependency+" (disabled)")
+		}
+	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf("cannot enable mod %s because required dependencies are unavailable: %s", modName, strings.Join(missing, ", "))
+	}
+
+	return nil
+}
+
+func (mods *Mods) ValidateModCanDisable(modName string) error {
+	if _, ok := mods.modInfoByName(modName); !ok {
+		return fmt.Errorf("mod %s is not installed", modName)
+	}
+
+	dependents := make([]string, 0)
+	for _, modInfo := range mods.ModInfoList.Mods {
+		if modInfo.Name == modName {
+			continue
+		}
+		enabled, ok := mods.isModEnabled(modInfo.Name)
+		if !ok || !enabled {
+			continue
+		}
+
+		for _, dependency := range requiredDependencyNames(modInfo.Dependencies) {
+			if dependency == modName {
+				dependents = append(dependents, modInfo.Name)
+				break
+			}
+		}
+	}
+
+	if len(dependents) > 0 {
+		return fmt.Errorf("cannot disable or delete mod %s because enabled mods depend on it: %s", modName, strings.Join(dependents, ", "))
+	}
+
+	return nil
+}
+
+func (mods *Mods) ValidateEnabledDependencies() []string {
+	issues := make([]string, 0)
+
+	for _, modInfo := range mods.ModInfoList.Mods {
+		enabled, ok := mods.isModEnabled(modInfo.Name)
+		if !ok || !enabled {
+			continue
+		}
+
+		for _, dependency := range requiredDependencyNames(modInfo.Dependencies) {
+			if _, ok := mods.modInfoByName(dependency); !ok {
+				issues = append(issues, fmt.Sprintf("%s requires %s, but it is not installed", modInfo.Name, dependency))
+				continue
+			}
+			if dependencyEnabled, ok := mods.isModEnabled(dependency); !ok || !dependencyEnabled {
+				issues = append(issues, fmt.Sprintf("%s requires %s, but it is disabled", modInfo.Name, dependency))
+			}
+		}
+
+		if !modInfo.Compatibility {
+			issues = append(issues, fmt.Sprintf("%s is not compatible with the installed Factorio version", modInfo.Name))
+		}
+	}
+
+	return issues
+}
+
+func (mods *Mods) modInfoByName(modName string) (ModInfo, bool) {
+	for _, modInfo := range mods.ModInfoList.Mods {
+		if modInfo.Name == modName {
+			return modInfo, true
+		}
+	}
+
+	return ModInfo{}, false
+}
+
+func (mods *Mods) isModEnabled(modName string) (bool, bool) {
+	for _, mod := range mods.ModSimpleList.Mods {
+		if mod.Name == modName {
+			return mod.Enabled, true
+		}
+	}
+
+	return false, false
+}
+
+func requiredDependencyNames(dependencies []string) []string {
+	required := make([]string, 0)
+
+	for _, dependency := range dependencies {
+		name, ok := requiredDependencyName(dependency)
+		if ok {
+			required = append(required, name)
+		}
+	}
+
+	return required
+}
+
+func requiredDependencyName(dependency string) (string, bool) {
+	fields := strings.Fields(strings.TrimSpace(dependency))
+	if len(fields) == 0 {
+		return "", false
+	}
+
+	name := fields[0]
+	if name == "?" || name == "!" || name == "~" || name == "(?)" {
+		return "", false
+	}
+	if strings.HasPrefix(name, "?") || strings.HasPrefix(name, "!") || strings.HasPrefix(name, "~") {
+		return "", false
+	}
+	if name == "base" {
+		return "", false
+	}
+
+	return name, true
 }
 
 func (mods *Mods) createMod(modName string, fileName string, fileRc io.Reader) error {
