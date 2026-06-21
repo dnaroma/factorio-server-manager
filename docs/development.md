@@ -53,16 +53,16 @@ Backend code is in the Go module under `src/`.
 Run short backend tests in a Linux environment:
 
 ```sh
-cd src
-mise exec -- go test ./... -v -test.short
+make test-go-docker
 ```
 
 Full tests use Factorio portal credentials when available:
 
 ```sh
-cd src
-mise exec -- go test ./... -v
+./scripts/go-test-docker.sh ./... -v
 ```
+
+The Docker runner reuses named volumes for `/go/pkg/mod` and `/root/.cache/go-build`, so repeated runs do not re-download modules or rebuild unchanged packages.
 
 Run `gofmt` before committing Go changes:
 
@@ -97,8 +97,7 @@ Run:
 
 ```sh
 mise exec -- make app/bundle
-cd src
-mise exec -- go test ./... -v -test.short
+make test-go-docker
 ```
 
 If tests mutate `conf.json.example`, restore it before committing.
