@@ -29,6 +29,7 @@ This tool runs on a Factorio server and allows management of the Factorio server
 - [Development](docs/development.md)
 - [Maintenance](docs/maintenance.md)
 - [Deployment](docs/deployment.md)
+- [Roadmap](docs/roadmap.md)
 - [Docker usage](docker/README.md)
 
 ## Contributing
