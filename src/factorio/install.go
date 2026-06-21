@@ -136,6 +136,10 @@ func InstallFactorio(version string) error {
 		updateInstallState("failed", version, fmt.Sprintf("Extract failed: %s", err), progressReader.downloaded, resp.ContentLength)
 		return err
 	}
+	if err := EnsureConfig(config.FactorioConfigFile); err != nil {
+		updateInstallState("failed", version, fmt.Sprintf("Could not initialize config.ini: %s", err), progressReader.downloaded, resp.ContentLength)
+		return err
+	}
 
 	updateInstallState("initializing", version, "Loading Factorio server metadata", progressReader.downloaded, resp.ContentLength)
 	if err := NewFactorioServer(); err != nil {
