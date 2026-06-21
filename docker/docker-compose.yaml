@@ -5,7 +5,6 @@ services:
     container_name: "factorio-server-manager"
     restart: "unless-stopped"
     environment:
-      - "FACTORIO_VERSION=stable"
       - "RCON_PASS"
       - "FSM_ADMIN_USERNAME"
       - "FSM_ADMIN_PASSWORD"
