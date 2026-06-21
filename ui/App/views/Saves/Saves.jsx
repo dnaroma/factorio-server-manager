@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from "react";
+import {createPortal} from "react-dom";
 import savesResource from "../../../api/resources/saves";
 import Panel from "../../components/Panel";
 import CreateSaveForm from "./components/CreateSaveForm";
@@ -57,8 +58,10 @@ const saveModsLabel = save => {
 
 const SaveModsCell = ({save}) => {
     const [isHovered, setIsHovered] = useState(false);
+    const [isPopoverHovered, setIsPopoverHovered] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
     const [isPinned, setIsPinned] = useState(false);
+    const [position, setPosition] = useState({top: 0, left: 0});
     const count = saveModsCount(save);
     if (count === 0) {
         return "Unavailable";
@@ -66,12 +69,28 @@ const SaveModsCell = ({save}) => {
 
     const label = saveModsLabel(save);
     const mods = save.metadata?.mods || [];
-    const isOpen = isHovered || isFocused || isPinned;
+    const isOpen = isHovered || isPopoverHovered || isFocused || isPinned;
+    const updatePosition = target => {
+        const rect = target.getBoundingClientRect();
+        const width = Math.min(320, window.innerWidth - 24);
+        const height = 288;
+        const margin = 12;
+        const top = rect.bottom + 8 + height > window.innerHeight
+            ? Math.max(margin, rect.top - height - 8)
+            : rect.bottom + 8;
+        setPosition({
+            top,
+            left: Math.min(Math.max(rect.left, margin), window.innerWidth - width - margin)
+        });
+    };
 
     return (
         <div
-            className="relative inline-block"
-            onMouseEnter={() => setIsHovered(true)}
+            className="inline-block"
+            onMouseEnter={event => {
+                updatePosition(event.currentTarget);
+                setIsHovered(true);
+            }}
             onMouseLeave={() => setIsHovered(false)}
         >
             <button
@@ -79,22 +98,34 @@ const SaveModsCell = ({save}) => {
                 className="py-1 px-2 bg-gray-light hover:bg-orange hover:glow-orange accentuated text-black font-bold whitespace-nowrap"
                 aria-expanded={isOpen}
                 aria-label={`${label}: ${saveModsList(save)}`}
-                onClick={() => setIsPinned(!isPinned)}
-                onFocus={() => setIsFocused(true)}
+                onClick={event => {
+                    updatePosition(event.currentTarget);
+                    setIsPinned(!isPinned);
+                }}
+                onFocus={event => {
+                    updatePosition(event.currentTarget);
+                    setIsFocused(true);
+                }}
                 onBlur={() => setIsFocused(false)}
             >
                 <FontAwesomeIcon icon={faList} className="mr-1"/>
                 {label}
             </button>
-            {isOpen &&
-                <div className="absolute z-30 left-0 top-full mt-2 w-96 max-w-xs max-h-72 overflow-y-auto bg-black text-white shadow-lg accentuated p-3 whitespace-normal">
+            {isOpen && createPortal(
+                <div
+                    className="fixed z-50 max-h-72 overflow-y-auto bg-black text-white shadow-lg accentuated p-3 whitespace-normal"
+                    style={{top: position.top, left: position.left, width: "min(20rem, calc(100vw - 24px))"}}
+                    onMouseEnter={() => setIsPopoverHovered(true)}
+                    onMouseLeave={() => setIsPopoverHovered(false)}
+                >
                     {mods.map(mod =>
                         <div key={`${mod.name}-${mod.version}`} className="text-sm leading-6">
                             <span className="font-bold">{mod.name}</span> {mod.version}
                         </div>
                     )}
-                </div>
-            }
+                </div>,
+                document.body
+            )}
         </div>
     );
 };
