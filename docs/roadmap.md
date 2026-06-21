@@ -6,20 +6,20 @@ This roadmap focuses on features that make Factorio Server Manager more useful f
 
 ### Mod Management
 
-- [ ] Show mod portal metadata beside installed mods: latest version, release date, Factorio compatibility, dependencies, and changelog link.
-- [ ] Separate mod updates into compatible, incompatible, and unknown groups.
-- [ ] Add "update selected mods" instead of only single-mod and update-all flows.
-- [ ] De-duplicate queued mod updates so one mod cannot be updated multiple times in one batch.
-- [ ] Add dependency checks before enabling, disabling, deleting, or updating mods.
-- [ ] Show why a mod is incompatible with the current Factorio version.
+- [x] Show mod portal metadata beside installed mods: latest version, release date, Factorio compatibility, dependencies, and changelog link.
+- [x] Separate mod updates into compatible, incompatible, and unknown groups.
+- [x] Add "update selected mods" instead of only single-mod and update-all flows.
+- [x] De-duplicate queued mod updates so one mod cannot be updated multiple times in one batch.
+- [x] Add dependency checks before enabling, disabling, deleting, or updating mods.
+- [x] Show why a mod is incompatible with the current Factorio version.
 
 ### Mod Packs
 
-- [ ] Add clone, rename, and description fields for mod packs.
-- [ ] Add a mod pack diff view showing mods added, removed, updated, enabled, or disabled before loading.
-- [ ] Add dry-run validation before loading a mod pack into the active server.
-- [ ] Add import and export for mod packs including `mod-list.json`, `mod-settings.dat`, and the mod zip files.
-- [ ] Track the Factorio version a mod pack was last validated against.
+- [x] Add clone, rename, and description fields for mod packs.
+- [x] Add a mod pack diff view showing mods added, removed, updated, enabled, or disabled before loading.
+- [x] Add dry-run validation before loading a mod pack into the active server.
+- [x] Add import and export for mod packs including `mod-list.json`, `mod-settings.dat`, and the mod zip files.
+- [x] Track the Factorio version a mod pack was last validated against.
 
 ### Save Management
 

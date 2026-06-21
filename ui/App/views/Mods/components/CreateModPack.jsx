@@ -17,7 +17,7 @@ const CreateModPack = ({onSuccess}) => {
         setIsCreating(true);
 
         modsResource.packs
-            .create(data.name)
+            .create(data.name, data.description)
             .then(onSuccess)
             .finally(() => {
                 setIsCreating(false)
@@ -32,6 +32,10 @@ const CreateModPack = ({onSuccess}) => {
                 <div className="mb-4">
                     <Label text="Name" htmlFor="name"/>
                     <Input register={register('name',{required: true})}/>
+                </div>
+                <div className="mb-4">
+                    <Label text="Description" htmlFor="description"/>
+                    <Input register={register('description')}/>
                 </div>
                 <Button size="sm" isLoading={isCreating} isSubmit={true}>Create</Button>
             </form>

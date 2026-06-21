@@ -12,6 +12,90 @@ import Fuse from "fuse.js";
 import CreateModPack from "./components/CreateModPack";
 import ModPack from "./components/ModPack";
 import ModList from "./components/ModList";
+import ImportModPack from "./components/ImportModPack";
+import {coerce, gt, satisfies} from "semver";
+
+const releaseVersion = release => coerce(release.version);
+const modVersion = mod => coerce(mod.version);
+const factorioReleaseVersion = release => coerce(release.info_json.factorio_version);
+
+const isReleaseCompatible = (release, factorioVersion) => {
+    const requiredFactorioVersion = factorioReleaseVersion(release);
+    if (!requiredFactorioVersion || !factorioVersion) {
+        return false;
+    }
+
+    return satisfies(factorioVersion, "~" + requiredFactorioVersion.version) ||
+        (
+            satisfies(factorioVersion, "1.0.0") &&
+            satisfies(requiredFactorioVersion, "0.18.x")
+        );
+};
+
+const newestRelease = releases => releases.reduce((newest, release) => {
+    const version = releaseVersion(release);
+    if (!version) {
+        return newest;
+    }
+    if (!newest || gt(version, releaseVersion(newest))) {
+        return release;
+    }
+
+    return newest;
+}, null);
+
+const buildModMetadata = (mod, portalInfo, factorioVersion) => {
+    if (!portalInfo || portalInfo.error) {
+        return {
+            status: "unknown",
+            reason: portalInfo?.error || "Portal metadata unavailable",
+        };
+    }
+
+    const latestRelease = newestRelease(portalInfo.releases || []);
+    const latestCompatibleRelease = newestRelease((portalInfo.releases || []).filter(release =>
+        isReleaseCompatible(release, factorioVersion)
+    ));
+    const currentVersion = modVersion(mod);
+    const latestVersion = latestRelease ? releaseVersion(latestRelease) : null;
+    const latestCompatibleVersion = latestCompatibleRelease ? releaseVersion(latestCompatibleRelease) : null;
+    const dependencies = latestCompatibleRelease?.info_json?.dependencies || latestRelease?.info_json?.dependencies || mod.dependencies || [];
+
+    let update = null;
+    let status = "current";
+    let reason = "";
+
+    if (!latestRelease || !latestVersion || !currentVersion) {
+        status = "unknown";
+        reason = "No release metadata available";
+    } else if (latestCompatibleRelease && latestCompatibleVersion && gt(latestCompatibleVersion, currentVersion)) {
+        status = "compatible";
+        update = {
+            downloadUrl: latestCompatibleRelease.download_url,
+            fileName: latestCompatibleRelease.file_name,
+            modName: mod.name,
+        };
+    } else if (gt(latestVersion, currentVersion)) {
+        status = "incompatible";
+        reason = `Latest release requires Factorio ${latestRelease.info_json.factorio_version}`;
+    } else if (!mod.compatibility) {
+        status = "incompatible";
+        reason = `Installed mod targets Factorio ${mod.factorio_version}`;
+    }
+
+    return {
+        status,
+        reason,
+        latestRelease,
+        latestCompatibleRelease,
+        latestVersion: latestRelease?.version,
+        latestReleasedAt: latestRelease?.released_at,
+        factorioVersion: latestRelease?.info_json?.factorio_version,
+        dependencies,
+        update,
+        changelogUrl: `https://mods.factorio.com/mod/${mod.name}/changelog`,
+    };
+};
 
 const Mods = ({serverStatus}) => {
 
@@ -20,12 +104,9 @@ const Mods = ({serverStatus}) => {
     const [factorioVersion, setFactorioVersion] = useState(null);
     const [fuse, setFuse] = useState(undefined);
     const [isDeletingAllMods, setIsDeletingAllMods] = useState(false);
-    const [isUpdatingAllMods, setIsUpdatingAllMods] = useState(false);
-    const [updatableMods, setUpdatableMods] = useState([]);
-
-    const addUpdatableMod = mod => {
-        setUpdatableMods(mods => [...mods, mod])
-    };
+    const [isUpdatingMods, setIsUpdatingMods] = useState(false);
+    const [portalInfo, setPortalInfo] = useState({});
+    const [selectedUpdates, setSelectedUpdates] = useState({});
 
     const fetchInstalledMods = () => {
         modsResource.installed()
@@ -44,17 +125,45 @@ const Mods = ({serverStatus}) => {
             .finally(() => setIsDeletingAllMods(false))
     }
 
-    const updateAllMods = () => {
-        setIsUpdatingAllMods(true);
+    const metadataByMod = installedMods.reduce((metadata, mod) => {
+        metadata[mod.name] = buildModMetadata(mod, portalInfo[mod.name], factorioVersion);
+        return metadata;
+    }, {});
 
-        let promises = [];
-        for (const updatableMod of updatableMods) {
-            promises.push(modsResource.update(updatableMod))
+    const updatesByGroup = installedMods.reduce((groups, mod) => {
+        const metadata = metadataByMod[mod.name];
+        if (metadata?.status && metadata.status !== "current") {
+            groups[metadata.status].push(mod);
         }
+        return groups;
+    }, {compatible: [], incompatible: [], unknown: []});
 
-        Promise.all(promises)
+    const compatibleUpdates = updatesByGroup.compatible
+        .map(mod => metadataByMod[mod.name]?.update)
+        .filter(Boolean);
+    const selectedUpdatePayloads = compatibleUpdates.filter(update => selectedUpdates[update.modName]);
+
+    const updateMods = updates => {
+        setIsUpdatingMods(true);
+
+        Promise.all(updates.map(update => modsResource.update(update)))
             .then(fetchInstalledMods)
-            .finally(() => setIsUpdatingAllMods(false));
+            .finally(() => setIsUpdatingMods(false));
+    }
+
+    const updateAllMods = () => {
+        updateMods(compatibleUpdates);
+    }
+
+    const updateSelectedMods = () => {
+        updateMods(selectedUpdatePayloads);
+    }
+
+    const toggleSelectedUpdate = modName => {
+        setSelectedUpdates(selected => ({
+            ...selected,
+            [modName]: !selected[modName]
+        }));
     }
 
     useEffect(() => {
@@ -84,6 +193,43 @@ const Mods = ({serverStatus}) => {
             });
 
     }, []);
+
+    useEffect(() => {
+        if (!factorioVersion || installedMods.length === 0) {
+            return;
+        }
+
+        let canceled = false;
+        Promise.all(installedMods.map(mod =>
+            modsResource.portal.info(mod.name)
+                .then(data => ({name: mod.name, data}))
+                .catch(() => ({name: mod.name, data: {error: "Portal metadata unavailable"}}))
+        )).then(results => {
+            if (canceled) {
+                return;
+            }
+
+            const info = {};
+            results.forEach(result => {
+                info[result.name] = result.data;
+            });
+            setPortalInfo(info);
+        });
+
+        return () => {
+            canceled = true;
+        };
+    }, [installedMods, factorioVersion]);
+
+    useEffect(() => {
+        setSelectedUpdates(selected => {
+            const next = {};
+            compatibleUpdates.forEach(update => {
+                next[update.modName] = selected[update.modName] || false;
+            });
+            return next;
+        });
+    }, [installedMods, portalInfo, factorioVersion]);
 
     const toggleMod = modName => {
         return modsResource
@@ -132,11 +278,13 @@ const Mods = ({serverStatus}) => {
                 title="Mods"
                 className="mb-6"
                 content={
-                    <ModList addUpdatableMod={addUpdatableMod}
-                             toggleMod={toggleMod}
+                    <ModList toggleMod={toggleMod}
                              updateMod={updateMod}
                              deleteMod={deleteMod}
                              mods={installedMods}
+                             metadataByMod={metadataByMod}
+                             selectedUpdates={selectedUpdates}
+                             toggleSelectedUpdate={toggleSelectedUpdate}
                              factorioVersion={factorioVersion}
                              disabled={disabled}
                     />
@@ -145,14 +293,46 @@ const Mods = ({serverStatus}) => {
                     <>
                         {
                             !disabled &&
-                            <Button size="sm" className="mr-2" type="danger" isLoading={isDeletingAllMods}
-                                    onClick={deleteAllMods}>Delete all Mods</Button> &&
-                            <Button size="sm" className="mr-2" isLoading={isUpdatingAllMods}
-                                    onClick={updateAllMods}>Update all Mods</Button>
+                            <>
+                                <Button size="sm" className="mr-2" type="danger" isLoading={isDeletingAllMods}
+                                        onClick={deleteAllMods}>Delete all Mods</Button>
+                                <Button size="sm" className="mr-2" isLoading={isUpdatingMods}
+                                        isDisabled={compatibleUpdates.length === 0}
+                                        onClick={updateAllMods}>Update all Mods</Button>
+                                <Button size="sm" className="mr-2" isLoading={isUpdatingMods}
+                                        isDisabled={selectedUpdatePayloads.length === 0}
+                                        onClick={updateSelectedMods}>Update selected Mods</Button>
+                            </>
                         }
                         <a className="bg-gray-light py-1 px-2 hover:glow-orange hover:bg-orange inline-block accentuated text-black font-bold"
                            href={modsResource.downloadAllURL}>Download all Mods</a>
                     </>
+                }
+            />
+            <Panel
+                title="Mod update status"
+                className="mb-6"
+                content={
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <h3 className="text-green font-bold mb-2">Compatible updates</h3>
+                            {updatesByGroup.compatible.length === 0 ? "None" : updatesByGroup.compatible.map(mod =>
+                                <div key={mod.name}>{mod.title} {mod.version} → {metadataByMod[mod.name].latestCompatibleRelease.version}</div>
+                            )}
+                        </div>
+                        <div>
+                            <h3 className="text-red font-bold mb-2">Incompatible updates</h3>
+                            {updatesByGroup.incompatible.length === 0 ? "None" : updatesByGroup.incompatible.map(mod =>
+                                <div key={mod.name}>{mod.title}: {metadataByMod[mod.name].reason}</div>
+                            )}
+                        </div>
+                        <div>
+                            <h3 className="text-orange font-bold mb-2">Unknown</h3>
+                            {updatesByGroup.unknown.length === 0 ? "None" : updatesByGroup.unknown.map(mod =>
+                                <div key={mod.name}>{mod.title}: {metadataByMod[mod.name].reason}</div>
+                            )}
+                        </div>
+                    </div>
                 }
             />
 
@@ -172,7 +352,10 @@ const Mods = ({serverStatus}) => {
                     )
                 }
                 actions={
-                    <CreateModPack onSuccess={fetchModPacks}/>
+                    <>
+                        <CreateModPack onSuccess={fetchModPacks}/>
+                        <ImportModPack onSuccess={fetchModPacks}/>
+                    </>
                 }
             />
         </div>
