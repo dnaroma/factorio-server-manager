@@ -7,6 +7,7 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {
     faClone,
     faDownload,
+    faList,
     faPen,
     faRotateLeft,
     faSave,
@@ -22,13 +23,40 @@ const formatSize = size => `${parseFloat(size / 1024 / 1024).toFixed(3)} MB`;
 const formatDate = value => value ? new Date(value).toLocaleString() : "Never";
 const saveMapName = save => save.metadata?.map_name || "Unavailable";
 const saveFactorioVersion = save => save.metadata?.factorio_version || "Unavailable";
-const saveMods = save => {
+const saveModsList = save => {
     const mods = save.metadata?.mods || [];
-    if (mods.length === 0) {
+    return mods.map(mod => `${mod.name} ${mod.version}`).join(", ");
+};
+const saveModsCount = save => save.metadata?.mods?.length || 0;
+const saveModsLabel = save => {
+    const count = saveModsCount(save);
+    if (count === 0) {
         return "Unavailable";
     }
 
-    return mods.map(mod => `${mod.name} ${mod.version}`).join(", ");
+    return `${count} ${count === 1 ? "mod" : "mods"}`;
+};
+
+const SaveModsCell = ({save}) => {
+    const count = saveModsCount(save);
+    if (count === 0) {
+        return "Unavailable";
+    }
+
+    const label = saveModsLabel(save);
+    const mods = saveModsList(save);
+
+    return (
+        <button
+            type="button"
+            className="py-1 px-2 bg-gray-light hover:bg-orange hover:glow-orange accentuated text-black font-bold whitespace-nowrap"
+            title={mods}
+            aria-label={`${label}: ${mods}`}
+        >
+            <FontAwesomeIcon icon={faList} className="mr-1"/>
+            {label}
+        </button>
+    );
 };
 
 const Saves = ({serverStatus}) => {
@@ -230,7 +258,7 @@ const Saves = ({serverStatus}) => {
                                     <td className="pr-4">{saveMapName(save)}</td>
                                     <td className="pr-4">Unavailable</td>
                                     <td className="pr-4">{saveFactorioVersion(save)}</td>
-                                    <td className="pr-4 max-w-xs truncate" title={saveMods(save)}>{saveMods(save)}</td>
+                                    <td className="pr-4"><SaveModsCell save={save}/></td>
                                     <td className="pr-4">{(new Date(save.last_mod)).toLocaleString()}</td>
                                     <td className="pr-4">{formatSize(save.size)}</td>
                                     <td>
