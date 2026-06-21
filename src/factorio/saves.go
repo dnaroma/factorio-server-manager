@@ -2,6 +2,7 @@ package factorio
 
 import (
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -37,6 +38,7 @@ type SaveBackup struct {
 type SaveMetadata struct {
 	MapName         string        `json:"map_name,omitempty"`
 	FactorioVersion Version       `json:"factorio_version,omitempty"`
+	PlayTimeTicks   uint64        `json:"play_time_ticks,omitempty"`
 	Mods            []SaveModInfo `json:"mods,omitempty"`
 	Error           string        `json:"error,omitempty"`
 }
@@ -517,8 +519,24 @@ func readSaveMetadata(path string) *SaveMetadata {
 	return &SaveMetadata{
 		MapName:         header.Name,
 		FactorioVersion: header.FactorioVersion,
+		PlayTimeTicks:   readSavePlayTimeTicks(path),
 		Mods:            mods,
 	}
+}
+
+func readSavePlayTimeTicks(path string) uint64 {
+	f, err := OpenArchiveFile(path, "level.datmetadata")
+	if err != nil {
+		return 0
+	}
+	defer f.Close()
+
+	var data [8]byte
+	if _, err := io.ReadFull(f, data[:]); err != nil {
+		return 0
+	}
+
+	return binary.LittleEndian.Uint64(data[:])
 }
 
 type SaveBackupSchedule struct {

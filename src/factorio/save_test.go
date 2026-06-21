@@ -27,6 +27,9 @@ func Test2_0(t *testing.T) {
 	if header.LoadedFromBuild != 84451 {
 		t.Fatalf("Wrong loaded from build: %d", header.LoadedFromBuild)
 	}
+	if ticks := readSavePlayTimeTicks("../factorio_testfiles/test_2_0.zip"); ticks != 20943412 {
+		t.Fatalf("Wrong play time ticks: %d", ticks)
+	}
 	if len(header.Mods) != 52 {
 		t.Fatalf("Expected 52 mods, got %d", len(header.Mods))
 	}

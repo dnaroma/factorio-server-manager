@@ -21,6 +21,24 @@ import Label from "../../components/Label";
 
 const formatSize = size => `${parseFloat(size / 1024 / 1024).toFixed(3)} MB`;
 const formatDate = value => value ? new Date(value).toLocaleString() : "Never";
+const formatPlayTime = ticks => {
+    if (!ticks) {
+        return "Unavailable";
+    }
+
+    const totalMinutes = Math.floor(ticks / 60 / 60);
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+    if (days > 0) {
+        return `${days}d ${hours}h ${minutes}m`;
+    }
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    }
+
+    return `${minutes}m`;
+};
 const saveMapName = save => save.metadata?.map_name || "Unavailable";
 const saveFactorioVersion = save => save.metadata?.factorio_version || "Unavailable";
 const saveModsList = save => {
@@ -278,7 +296,7 @@ const Saves = ({serverStatus}) => {
                                 <tr className="py-2 md:py-1" key={save.name}>
                                     <td className="pr-4">{save.name}</td>
                                     <td className="pr-4">{saveMapName(save)}</td>
-                                    <td className="pr-4">Unavailable</td>
+                                    <td className="pr-4 whitespace-nowrap">{formatPlayTime(save.metadata?.play_time_ticks)}</td>
                                     <td className="pr-4">{saveFactorioVersion(save)}</td>
                                     <td className="pr-4"><SaveModsCell save={save}/></td>
                                     <td className="pr-4">{(new Date(save.last_mod)).toLocaleString()}</td>
