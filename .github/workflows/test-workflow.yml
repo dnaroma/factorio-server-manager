@@ -18,62 +18,44 @@ env:
   FSM_CONF: '../../conf.json.example'
 jobs:
   test-npm:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: '26.3.1'
       - run: corepack enable
       - run: make app/bundle
   test-go:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        go: ['1.26.4']
-    runs-on: ${{ matrix.os }}
-    name: test-go ${{ matrix.go }} (${{ matrix.os }})
+    runs-on: ubuntu-latest
+    name: test-go 1.26.4 (ubuntu-latest)
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
       - name: Setup go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
-      - if: contains(matrix.os, 'ubuntu')
-        run: |
+          go-version: '1.26.4'
+      - run: |
           cd src
           if [[ -z "$factorio_password" ]]; then
             echo "run only short tests"
             go test ./... -v -test.short
           else
-            echo "run full test suit"
+            echo "run full test suite"
             go test ./... -v
           fi
-      - if: contains(matrix.os, 'windows')
-        run: |
-          cd src
-          if ([Environment]::GetEnvironmentVariable('factorio_password', 'Machine')) {
-            echo "run full test suit"
-            go test ./... -v
-          } else {
-            echo "run only short tests"
-            go test ./... -v "-test.short"
-          }
   docker-push:
     needs:  [test-npm, test-go]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref != 'refs/heads/master'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
       - uses: rlespinasse/github-slug-action@v3.x
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '26.3.1'
       - run: corepack enable
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v6
       - uses: docker/setup-buildx-action@v1
       - name: Login to GHCR
         uses: docker/login-action@v1

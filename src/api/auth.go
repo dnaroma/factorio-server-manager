@@ -24,6 +24,21 @@ var (
 	auth         Auth
 )
 
+func initialAdminCredentials(config bootstrap.Config) (username, password string, generatedPassword bool) {
+	username = config.AdminUsername
+	if username == "" {
+		username = "admin"
+	}
+
+	password = config.AdminPassword
+	if password == "" {
+		password = bootstrap.GenerateRandomPassword()
+		generatedPassword = true
+	}
+
+	return username, password, generatedPassword
+}
+
 func SetupAuth() {
 	var err error
 
@@ -56,11 +71,13 @@ func SetupAuth() {
 	auth.db.Model(&User{}).Count(&userCount)
 
 	if userCount == 0 {
+		config := bootstrap.GetConfig()
+
 		// no user created yet, create a default one
-		var password = bootstrap.GenerateRandomPassword()
+		username, password, generatedPassword := initialAdminCredentials(config)
 
 		var user User
-		user.Username = "admin"
+		user.Username = username
 		user.Password = password
 		user.Role = "admin"
 
@@ -72,7 +89,11 @@ func SetupAuth() {
 
 		log.Println("Created default admin user. Please change it's password as soon as possible.")
 		log.Printf("Username: %s", user.Username)
-		log.Printf("Password: %s", password)
+		if generatedPassword {
+			log.Printf("Password: %s", password)
+		} else {
+			log.Println("Password: using configured initial admin password")
+		}
 	}
 }
 

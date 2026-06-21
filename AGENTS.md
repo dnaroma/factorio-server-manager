@@ -28,7 +28,7 @@
 - Do not edit generated frontend assets in `app/`; edit `ui/` and rebuild.
 - Do not commit local runtime files such as `conf.json`, `.env`, `dev/`, `dev_packs/`, `build/`, `node_modules/`, or generated bundles.
 - Preserve existing API routes and authentication behavior unless the task explicitly changes them.
-- Prefer short Go tests near the changed package; run them in the Linux devcontainer because macOS cannot compile the Linux/Windows-only process health implementation.
+- Prefer short Go tests near the changed package; run them in the Linux devcontainer because the backend targets Linux deployments.
 - UI has no configured test runner.
 
 ## Project Conventions

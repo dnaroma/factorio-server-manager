@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/gorilla/securecookie"
@@ -30,6 +29,8 @@ type Flags struct {
 	GlibcLibLoc        string `long:"glibc-lib-loc" default:"/opt/glibc-2.18/lib" description:"Location of glibc lib folder (ex. /opt/glibc-2.18/lib)." env:"FSM_GLIBC_LIB"`
 	Autostart          string `long:"autostart" default:"false" description:"Autostart factorio server on bootup of FSM, default false [true/false]." env:"FSM_AUTOSTART"`
 	ModPackDir         string `long:"mod-pack-dir" default:"./mod_packs" description:"Directory to store mod packs." env:"FSM_MODPACK_DIR"`
+	AdminUsername      string `long:"admin-username" default:"admin" description:"Initial admin username, used only when no users exist." env:"FSM_ADMIN_USERNAME"`
+	AdminPassword      string `long:"admin-password" default:"" description:"Initial admin password, used only when no users exist." env:"FSM_ADMIN_PASSWORD"`
 }
 
 type Config struct {
@@ -60,6 +61,8 @@ type Config struct {
 	GlibcLocation           string `json:"-"`
 	GlibcLibLoc             string `json:"-"`
 	Autostart               string `json:"-"`
+	AdminUsername           string `json:"-"`
+	AdminPassword           string `json:"-"`
 	ConsoleCacheSize        int    `json:"console_cache_size,omitempty"` // the amount of cached lines, inside the factorio output cache
 	ConsoleLogFile          string `json:"console_log_file,omitempty"`
 	ChatLogFile             string `json:"chat_log_file,omitempty"` // separate log file for chat (incl join/quit)
@@ -206,6 +209,8 @@ func randomPort() int {
 
 func (config *Config) mapFlags(flags Flags) {
 	config.Autostart = flags.Autostart
+	config.AdminUsername = flags.AdminUsername
+	config.AdminPassword = flags.AdminPassword
 	config.GlibcCustom = flags.GlibcCustom
 	config.GlibcLocation = flags.GlibcLocation
 	config.GlibcLibLoc = flags.GlibcLibLoc
@@ -234,12 +239,7 @@ func (config *Config) mapFlags(flags Flags) {
 		config.FactorioBinary = filepath.Join(flags.FactorioDir, flags.FactorioBinary)
 	}
 
-	if runtime.GOOS == "windows" {
-		appdata := os.Getenv("APPDATA")
-		config.FactorioLog = filepath.Join(appdata, "Factorio", "factorio-current.log")
-	} else {
-		config.FactorioLog = filepath.Join(config.FactorioDir, "factorio-current.log")
-	}
+	config.FactorioLog = filepath.Join(config.FactorioDir, "factorio-current.log")
 }
 
 func failOnError(err error, msg string) {

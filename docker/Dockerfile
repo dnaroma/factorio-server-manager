@@ -3,7 +3,8 @@ FROM ubuntu
 
 ENV FACTORIO_VERSION=stable \
     MANAGER_VERSION=0.10.1 \
-    RCON_PASS=""
+    RCON_PASS="" \
+    FSM_ADMIN_USERNAME=admin
 
 VOLUME /opt/fsm-data /opt/factorio/saves /opt/factorio/mods /opt/factorio/config
 

@@ -1,7 +1,11 @@
 package factorio
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/OpenFactorioServerManager/factorio-server-manager/bootstrap"
 )
 
 // 1.1.14 changed the format of the saves, so new test has to be done
@@ -51,6 +55,107 @@ func Test1_1_14(t *testing.T) {
 	}
 
 	header.Equals(testHeader, t)
+}
+
+func TestSaveFileOperations(t *testing.T) {
+	dir := t.TempDir()
+	conf := filepath.Join(t.TempDir(), "conf.json")
+	if err := os.WriteFile(conf, []byte(`{"settings_file":"server-settings.json"}`), 0644); err != nil {
+		t.Fatalf("Error writing config: %s", err)
+	}
+	bootstrap.NewConfig([]string{"--dir", dir, "--conf", conf})
+
+	source := filepath.Join(dir, "saves", "map.zip")
+	if err := os.MkdirAll(filepath.Dir(source), 0755); err != nil {
+		t.Fatalf("Error creating saves dir: %s", err)
+	}
+	if err := os.WriteFile(source, []byte("save-data"), 0644); err != nil {
+		t.Fatalf("Error writing save: %s", err)
+	}
+
+	backup, err := BackupSave("map.zip")
+	if err != nil {
+		t.Fatalf("Error backing up save: %s", err)
+	}
+	secondBackup, err := BackupSave("map.zip")
+	if err != nil {
+		t.Fatalf("Error backing up save a second time: %s", err)
+	}
+	if backup.Name == secondBackup.Name {
+		t.Fatalf("Expected unique backup names, got %s", backup.Name)
+	}
+
+	duplicate, err := DuplicateSave("map.zip", "copy.zip")
+	if err != nil {
+		t.Fatalf("Error duplicating save: %s", err)
+	}
+	if duplicate.Name != "copy.zip" {
+		t.Fatalf("Wrong duplicate save name: %s", duplicate.Name)
+	}
+	if _, err := DuplicateSave("map.zip", "copy.zip"); err == nil {
+		t.Fatal("Expected duplicate save to fail when target exists")
+	}
+
+	renamed, err := RenameSave("copy.zip", "renamed.zip")
+	if err != nil {
+		t.Fatalf("Error renaming save: %s", err)
+	}
+	if renamed.Name != "renamed.zip" {
+		t.Fatalf("Wrong renamed save name: %s", renamed.Name)
+	}
+
+	if err := os.WriteFile(source, []byte("changed"), 0644); err != nil {
+		t.Fatalf("Error changing save: %s", err)
+	}
+	restored, err := RestoreSave(backup.Name, "")
+	if err != nil {
+		t.Fatalf("Error restoring save: %s", err)
+	}
+	if restored.Name != "map.zip" {
+		t.Fatalf("Wrong restored save name: %s", restored.Name)
+	}
+	contents, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("Error reading restored save: %s", err)
+	}
+	if string(contents) != "save-data" {
+		t.Fatalf("Wrong restored save contents: %s", contents)
+	}
+	tmpMatches, err := filepath.Glob(filepath.Join(dir, "saves", ".*.tmp"))
+	if err != nil {
+		t.Fatalf("Error checking temp files: %s", err)
+	}
+	if len(tmpMatches) != 0 {
+		t.Fatalf("Expected no save temp files, got %v", tmpMatches)
+	}
+
+	backups, err := ListSaveBackups()
+	if err != nil {
+		t.Fatalf("Error listing backups: %s", err)
+	}
+	if len(backups) != 2 {
+		t.Fatalf("Expected 2 backups, got %d", len(backups))
+	}
+}
+
+func TestValidateSaveNameRejectsUnsafePaths(t *testing.T) {
+	invalidNames := []string{
+		"",
+		"../map.zip",
+		"folder/map.zip",
+		`folder\map.zip`,
+		"/tmp/map.zip",
+		".",
+		"..",
+	}
+
+	for _, name := range invalidNames {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ValidateSaveName(name); err == nil {
+				t.Fatalf("Expected invalid save name: %s", name)
+			}
+		})
+	}
 }
 
 // 1.1 Binary seems equal to 0.18/1.0 binary, just the default values changed

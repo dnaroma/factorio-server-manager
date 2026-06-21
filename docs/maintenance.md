@@ -12,11 +12,11 @@
 
 CI runs:
 
-- `make app/bundle` on Ubuntu and Windows.
-- `go test ./... -v -test.short` on Ubuntu and Windows when Factorio credentials are not configured.
+- `make app/bundle` on Ubuntu.
+- `go test ./... -v -test.short` on Ubuntu when Factorio credentials are not configured.
 - Full Go tests when `FACTORIO_USERNAME` and `FACTORIO_PASSWORD` secrets are available.
 
-Run short Go tests in Linux when possible because process health code is platform-specific.
+Run Go tests in Linux because this project targets Linux server deployments.
 
 ## Configuration Files
 
@@ -29,6 +29,16 @@ On startup, the backend may update the active config file by:
 - migrating legacy LevelDB user storage to SQLite.
 
 Avoid committing generated secrets or runtime database files.
+
+## Save Backups
+
+Manual save backups are stored in a `backups` directory inside the configured saves directory. For the Docker image, this is under the persisted `/opt/factorio/saves` volume.
+
+Backup and duplicate actions copy save files without stopping the server. Restore and rename require the Factorio server to be stopped because they replace or move active save files.
+
+Restore writes to a temporary file in the target saves directory, syncs it, and then renames it into place. This keeps the final replace operation atomic on Docker bind mounts and named volumes.
+
+Backups are intended for quick rollback on the same saves volume. Keep separate host-level or offsite backups if you need protection from volume loss.
 
 ## Dependency Updates
 
@@ -64,3 +74,4 @@ docs: add deployment guide
 - The manager UI should be protected by HTTPS, VPN, or an internal network.
 - RCON and cookie secrets are generated when omitted; keep the resulting config file persistent.
 - Some API operations require the Factorio server to be stopped.
+- Save backups share storage with saves unless the host backs up or relocates that volume separately.
