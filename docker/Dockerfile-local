@@ -1,8 +1,7 @@
 # Glibc is required for Factorio Server binaries to run
 FROM ubuntu
 
-ENV FACTORIO_VERSION=stable \
-    RCON_PASS="" \
+ENV RCON_PASS="" \
     FSM_ADMIN_USERNAME=admin
 
 VOLUME /opt/fsm-data /opt/factorio/saves /opt/factorio/mods /opt/factorio/config
@@ -17,7 +16,9 @@ WORKDIR /opt
 COPY factorio-server-manager-linux.zip /factorio-server-manager-linux.zip
 RUN unzip /factorio-server-manager-linux.zip \
     && rm /factorio-server-manager-linux.zip \
-    && mv factorio-server-manager fsm
+    && mv factorio-server-manager fsm \
+    && mkdir -p /opt/fsm/app \
+    && if [ -f /opt/fsm/index.html ]; then mv /opt/fsm/index.html /opt/fsm/bundle.js /opt/fsm/style.css /opt/fsm/app/; fi
 
 COPY entrypoint.sh /opt
 

@@ -50,6 +50,11 @@ func DeleteAllMods() error {
 
 func ModStartUp() {
 	config := bootstrap.GetConfig()
+	if err := os.MkdirAll(config.FactorioDir, 0755); err != nil {
+		log.Printf("error creating FactorioDir %s with error %s", config.FactorioDir, err)
+		return
+	}
+
 	//get main-folder info
 	factorioDirInfo, err := os.Stat(config.FactorioDir)
 	if err != nil {

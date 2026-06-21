@@ -37,9 +37,7 @@ docker-compose -f docker-compose.simple.yaml up -d
 
 ### Factorio version
 
-By default container will download the latest version of factorio. If you want to use specific version, you can change
-the value of `FACTORIO_VERSION=latest` variable in the `docker-compose.yaml` file.
-Any version can be used. Using `latest` will download the newest beta version. Using `stable` will download the newest stable version.
+The container starts Factorio Server Manager without downloading Factorio. After logging in, install the Factorio headless server from the Server Status panel. Choose `Stable`, `Latest experimental`, or enter a specific version such as `1.1.110`.
 
 ## Accessing the application
 
@@ -47,12 +45,7 @@ Go to the domain specified in your `.env` file in your web browser. If running o
 
 ### First start
 
-When container starts it begins to download Factorio headless server archive, and only after that Factorio Server Manager server starts.
-So when docker-compose writes
-```
-Creating factorio-server-manager ... done
-```
-you have to wait several seconds before FSM UI becomes available.
+When the container starts, Factorio Server Manager is available before Factorio is installed. Install the Factorio server from the web UI before creating or starting saves.
 
 It may take some time for Let's Encrypt to issue the certificate, so for the first couple of minutes after starting the container you may see
 "Your connection is not private" error when you open your Factorio Server Manager address in your browser. This error should disappear within
@@ -68,15 +61,12 @@ Users can be added and deleted on the settings page.
 
 ## Updating Factorio
 
-For now, you can't update/downgrade the Factorio version from the UI.
+You can update or downgrade Factorio from the Server Status panel while the Factorio server is stopped.
 
-You can however do this using docker images while sustaining your security settings and map/modfiles.
-
-If you want to update Factorio to the latest version:
+If you want to update Factorio:
 1. Save your game and stop Factorio server in FSM UI.
-2. Run `docker-compose restart` (or `docker-compose -f docker-compose.simple.yaml restart` if you are using simple configuration).
-
-After container starts, latest Factorio version will be downloaded and installed.
+2. Select the target version in the Server Status panel.
+3. Click Install.
 
 ## Save backups
 

@@ -470,6 +470,7 @@ func StartServer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	server.Installed = factorio.IsFactorioInstalled()
 
 	// Check if savefile was submitted with request to start server.
 	if server.Savefile == "" {
@@ -582,6 +583,46 @@ func FactorioVersion(w http.ResponseWriter, r *http.Request) {
 	var server = factorio.GetFactorioServer()
 	resp["version"] = server.Version.String()
 	resp["base_mod_version"] = server.BaseModVersion
+}
+
+func FactorioInstallStatus(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		WriteResponse(w, factorio.GetInstallStatus())
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+}
+
+func InstallFactorio(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	var req struct {
+		Version string `json:"version"`
+	}
+	body, resp, err := ReadRequestBody(w, r)
+	if err != nil {
+		return
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		resp = fmt.Sprintf("Unable to parse the request body: %s", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := factorio.InstallFactorio(req.Version); err != nil {
+		resp = fmt.Sprintf("Error installing Factorio: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp = factorio.GetInstallStatus()
 }
 
 // Unmarshall the User object from the given bytearray

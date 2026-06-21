@@ -29,6 +29,7 @@ type Server struct {
 	Running        bool                   `json:"running"`
 	Version        Version                `json:"fac_version"`
 	BaseModVersion string                 `json:"base_mod_version"`
+	Installed      bool                   `json:"installed"`
 	StdOut         io.ReadCloser          `json:"-"`
 	StdErr         io.ReadCloser          `json:"-"`
 	StdIn          io.WriteCloser         `json:"-"`
@@ -86,6 +87,25 @@ func NewFactorioServer() (err error) {
 		log.Printf("failed to create config directory: %v", err)
 		return
 	}
+
+	if err = os.MkdirAll(config.FactorioSavesDir, 0755); err != nil {
+		log.Printf("failed to create saves directory: %v", err)
+		return
+	}
+
+	if err = os.MkdirAll(config.FactorioModsDir, 0755); err != nil {
+		log.Printf("failed to create mods directory: %v", err)
+		return
+	}
+
+	if !IsFactorioInstalled() {
+		log.Printf("Factorio server binary not found at %s; install Factorio from the web UI.", config.FactorioBinary)
+		server.Installed = false
+		SetFactorioServer(server)
+		return nil
+	}
+
+	server.Installed = true
 
 	settingsPath := config.SettingsFile
 	var settings *os.File
@@ -224,6 +244,12 @@ func GetFactorioServer() (f *Server) {
 func (server *Server) Run() error {
 	var err error
 	config := bootstrap.GetConfig()
+	if !IsFactorioInstalled() {
+		server.Installed = false
+		return errors.New("Factorio server is not installed")
+	}
+	server.Installed = true
+
 	data, err := json.MarshalIndent(server.Settings, "", "  ")
 	if err != nil {
 		log.Println("Failed to marshal FactorioServerSettings: ", err)

@@ -26,7 +26,6 @@ cp docker/docker-compose.simple.yaml /path/to/server/
 
 Set environment values:
 
-- `FACTORIO_VERSION`: `stable`, `latest`, or a specific Factorio version.
 - `RCON_PASS`: optional RCON password. If empty, one is generated.
 - `FSM_ADMIN_USERNAME`: initial web admin username. Defaults to `admin`.
 - `FSM_ADMIN_PASSWORD`: initial web admin password. If empty, one is generated.
@@ -64,7 +63,7 @@ Back up these directories before upgrades.
 
 ## First Start
 
-The container downloads the Factorio headless server before the UI becomes available.
+The container starts Factorio Server Manager without downloading Factorio. Log in and install the target Factorio headless server version from the Server Status panel.
 
 If `RCON_PASS` is empty, check the generated value in:
 
@@ -84,12 +83,8 @@ docker logs factorio-server-manager
 
 1. Save the game in the UI.
 2. Stop the Factorio server in the UI.
-3. Update `FACTORIO_VERSION` if needed.
-4. Restart the container:
-
-```sh
-docker compose restart
-```
+3. Select the target Factorio version in the Server Status panel.
+4. Click Install.
 
 ## Release Bundle
 

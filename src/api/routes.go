@@ -244,6 +244,18 @@ var apiRoutes = Routes{
 		FactorioVersion,
 		false,
 	}, {
+		"FactorioInstallStatus",
+		"GET",
+		"/server/install",
+		FactorioInstallStatus,
+		false,
+	}, {
+		"InstallFactorio",
+		"POST",
+		"/server/install",
+		InstallFactorio,
+		true,
+	}, {
 		"LogoutUser",
 		"GET",
 		"/logout",
