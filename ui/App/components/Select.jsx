@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 
-const Select = ({register, options, className = "", defaultValue = "", disabled = undefined}) => {
+const Select = ({register = {}, options, className = "", defaultValue = "", disabled = undefined}) => {
 
     const [value, setValue] = useState(defaultValue);
 
@@ -17,7 +17,10 @@ const Select = ({register, options, className = "", defaultValue = "", disabled 
             {...register}
             value={value}
             disabled={disabled}
-            onChange={optionElement => setValue(optionElement.target.value)}
+            onChange={optionElement => {
+                setValue(optionElement.target.value);
+                register.onChange?.(optionElement);
+            }}
         >
             {options.map(option => <option value={option.value} key={option.value}>{option.name}</option>)}
         </select>

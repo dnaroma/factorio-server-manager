@@ -347,8 +347,16 @@ func LoadModsFromSaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	saveName, err := factorio.ValidateSaveName(saveFileStruct.Name)
+	if err != nil {
+		resp = fmt.Sprintf("Invalid save file name: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	config := bootstrap.GetConfig()
-	path := filepath.Join(config.FactorioSavesDir, saveFileStruct.Name)
+	path := filepath.Join(config.FactorioSavesDir, saveName)
 
 	f, err := factorio.OpenArchiveFile(path, "level.dat", "level-init.dat")
 	if err != nil {

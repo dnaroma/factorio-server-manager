@@ -4,7 +4,6 @@ import Select from "../../../components/Select";
 import Label from "../../../components/Label";
 import {useForm} from "react-hook-form";
 import Button from "../../../components/Button";
-import modsResource from "../../../../api/resources/mods";
 import modResource from "../../../../api/resources/mods";
 import FactorioLogin from "./AddMod/components/FactorioLogin";
 import ConfirmDialog from "../../../components/ConfirmDialog";
@@ -32,21 +31,39 @@ const LoadMods = ({refreshMods}) => {
     }, []);
 
     const loadModsRequested = data => {
+        if (!data.save) {
+            window.flash("Select a save file first.", "red");
+            return;
+        }
         setIsLoading(true);
         setLoadModsData(data);
     }
 
     const loadMods = async data => {
-        await modResource.deleteAll();
-        const {mods} = await savesResource.mods(data.save).catch(() => {
+        const saveHeader = await savesResource.mods(data.save).catch(() => {
             setIsLoading(false);
             setLoadModsData(undefined);
+            window.flash(`Could not read mods from save file ${data.save}.`, "red");
         });
+        if (!saveHeader) {
+            return;
+        }
 
+        const mods = (saveHeader.mods || []).filter(mod => mod.name !== "base");
+        if (mods.length === 0) {
+            setIsLoading(false);
+            setLoadModsData(undefined);
+            window.flash(`Save file ${data.save} does not list any installable mods.`, "red");
+            return;
+        }
+
+        await modResource.deleteAll();
         await modResource.portal.installMultiple(mods)
             .then(() => {
                 refreshMods();
                 window.flash(`Mods are loaded from save file ${data.save}.`, "green");
+            }).catch(() => {
+                window.flash(`Could not install mods from save file ${data.save}.`, "red");
             }).finally(() => {
                 setIsLoading(false);
                 setLoadModsData(undefined);
