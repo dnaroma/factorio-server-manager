@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y curl tar xz-utils unzip jq && rm -rf /v
 WORKDIR /opt
 
 # Install FSM
-RUN curl --location "https://github.com/OpenFactorioServerManager/factorio-server-manager/releases/download/$MANAGER_VERSION/factorio-server-manager-linux-$MANAGER_VERSION.zip" \
+RUN curl --location "https://github.com/dnaroma/factorio-server-manager/releases/download/$MANAGER_VERSION/factorio-server-manager-linux-$MANAGER_VERSION.zip" \
          --output /tmp/factorio-server-manager-linux_${MANAGER_VERSION}.zip \
     && unzip /tmp/factorio-server-manager-linux_${MANAGER_VERSION}.zip \
     && rm /tmp/factorio-server-manager-linux_${MANAGER_VERSION}.zip \

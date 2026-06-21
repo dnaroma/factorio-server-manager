@@ -34,11 +34,8 @@ const mods = {
     },
     downloadAllURL: '/api/mods/download',
     portal: {
-        login: async (username, password) => {
-            const response = await client.post('/api/mods/portal/login', {
-                username,
-                password
-            });
+        login: async credentials => {
+            const response = await client.post('/api/mods/portal/login', credentials);
             return response.data;
         },
         status: async () => {

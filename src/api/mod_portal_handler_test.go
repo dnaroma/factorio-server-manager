@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/OpenFactorioServerManager/factorio-server-manager/factorio"
 )
 
 func TestModPortalInstallHandler(t *testing.T) {
@@ -77,4 +79,32 @@ func TestModPortalInstallMultipleHandler(t *testing.T) {
 	ModEmptyBodyTest(t, method, route, handlerFunc)
 
 	ModInvalidJsonTest(t, method, route, handlerFunc)
+}
+
+func TestModPortalLoginHandlerWithApiKey(t *testing.T) {
+	method := "POST"
+	route := "/api/mods/portal/login"
+	handlerFunc := ModPortalLoginHandler
+
+	var credentials factorio.Credentials
+	_ = credentials.Del()
+	defer credentials.Del()
+
+	requestBody := strings.NewReader(`{"username": "test-user", "apiKey": "test-api-key"}`)
+
+	CallRoute(t, method, route, route, requestBody, handlerFunc, http.StatusOK, "null")
+
+	loaded, err := credentials.Load()
+	if err != nil {
+		t.Fatalf("Error loading credentials: %s", err)
+	}
+	if !loaded {
+		t.Fatalf("Expected credentials to be persisted")
+	}
+	if credentials.Username != "test-user" {
+		t.Fatalf("Wrong username. expected test-user - got %s", credentials.Username)
+	}
+	if credentials.Userkey != "test-api-key" {
+		t.Fatalf("Wrong API key. expected test-api-key - got %s", credentials.Userkey)
+	}
 }

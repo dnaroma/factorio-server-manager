@@ -13,16 +13,41 @@ const ServerSettings = () => {
     const [settings, setSettings] = useState();
     const [numberInputs, setNumberInputs] = useState([]);
 
-    const {register, handleSubmit, formState: {errors}, control} = useForm();
+    const {register, handleSubmit} = useForm();
+
+    const normalizeServerSettings = settings => {
+        const visibility = settings?.visibility || {};
+
+        return {
+            ...settings,
+            visibility: {
+                public: visibility.public ?? true,
+                lan: visibility.lan ?? true,
+            },
+            _comment_visibility: settings?._comment_visibility || "public: publish the game on the Factorio public game list; lan: announce the game on LAN.",
+        };
+    };
 
     const fetchSettings = async () => {
         const res = await settingsResource.server.list();
-        setSettings(res);
+        setSettings(normalizeServerSettings(res));
+    };
+
+    const commaSeparatedToList = value => {
+        if (Array.isArray(value)) {
+            return value;
+        }
+
+        if (!value) {
+            return [];
+        }
+
+        return value.split(',').map(item => item.trim()).filter(Boolean);
     };
 
     const saveServerSettings = data => {
-        data.tags = data.tags.split(',');
-        data.admins = data.admins.split(',');
+        data.tags = commaSeparatedToList(data.tags);
+        data.admins = commaSeparatedToList(data.admins);
 
         numberInputs.forEach(numberInput => {
             data[numberInput] = parseInt(data[numberInput]);
@@ -67,7 +92,7 @@ const ServerSettings = () => {
                 return (
                     <>
                         <Label htmlFor={name} text={label}/>
-                        <Input type="number" register={register} valueAsNumber="double" defaultValue={value} />
+                        <Input type="number" register={register(name)} defaultValue={value} />
                     </>
                 )
             case "string":
@@ -75,27 +100,27 @@ const ServerSettings = () => {
                     return (
                         <>
                             <Label htmlFor={name} text={label}/>
-                            <InputPassword name={name} register={register} defaultValue={value}/>
+                            <InputPassword register={register(name)} defaultValue={value}/>
                         </>
                     )
                 } else {
                     return (
                         <>
                             <Label htmlFor={name} text={label}/>
-                            <Input name={name} register={register} defaultValue={value}/>
+                            <Input register={register(name)} defaultValue={value}/>
                         </>
                     )
                 }
             case "boolean":
                 return (
-                    <Checkbox checked={value} text={label} register={register} name={name}/>
+                    <Checkbox checked={value} text={label} register={register(name)}/>
                 )
             case "object":
                 if (Array.isArray(value)) {
                     return (
                         <>
                             <Label htmlFor={name} text={label}/>
-                            <Input name={name} register={register} defaultValue={value}/>
+                            <Input register={register(name)} defaultValue={value.join(',')}/>
                         </>
                     )
                 } else if (name.includes("visibility")) {
@@ -104,7 +129,7 @@ const ServerSettings = () => {
                             <Label text="Visibility"/>
                             <div className="flex">
                                 {Object.keys(value).map(key => <div className="mr-4" key={`visibility-${key}`}>
-                                    <Checkbox checked={value[key]} register={register} text={key} name={`visibility[${key}]`}/>
+                                    <Checkbox checked={value[key]} register={register(`visibility.${key}`)} text={key}/>
                                 </div>)}
                             </div>
                         </>
@@ -115,7 +140,7 @@ const ServerSettings = () => {
                 return (
                     <>
                         <Label htmlFor={name} text={label}/>
-                        <Input name={name} register={register} defaultValue={value}/>
+                        <Input register={register(name)} defaultValue={value}/>
                     </>
                 )
         }
@@ -129,11 +154,7 @@ const ServerSettings = () => {
                     <>
                         {settings && Object.keys(settings).map(key => {
                             if (key.startsWith("_comment_")) {
-                                return (
-                                    <div key={key}>
-                                        {formTypeField(key, value)}
-                                    </div>
-                                );
+                                return null;
                             }
 
                             const value = settings[key]

@@ -1,4 +1,4 @@
-[![.github/workflows/test-workflow.yml](https://github.com/OpenFactorioServerManager/factorio-server-manager/workflows/.github/workflows/test-workflow.yml/badge.svg)](https://github.com/OpenFactorioServerManager/factorio-server-manager/actions)
+[![.github/workflows/test-workflow.yml](https://github.com/dnaroma/factorio-server-manager/workflows/.github/workflows/test-workflow.yml/badge.svg)](https://github.com/dnaroma/factorio-server-manager/actions)
 [![Discord](https://img.shields.io/discord/779512040934342687?label=Discord)](https://discord.gg/SB647WmSbU)
 
 # Factorio Server Manager
@@ -24,9 +24,12 @@ This tool runs on a Factorio server and allows management of the Factorio server
 #### Manage mods
 ![Factorio Server Manager Screenshot](screenshots/Screenshot_Mods.png)
 
-## [Installation and Usage](https://github.com/OpenFactorioServerManager/factorio-server-manager/wiki/Installation-and-Usage)
+## Documentation
 
-## [Development](https://github.com/OpenFactorioServerManager/factorio-server-manager/wiki/Development)
+- [Development](docs/development.md)
+- [Maintenance](docs/maintenance.md)
+- [Deployment](docs/deployment.md)
+- [Docker usage](docker/README.md)
 
 ## Contributing
 1. Fork it!
@@ -44,7 +47,7 @@ This tool runs on a Factorio server and allows management of the Factorio server
 * **[Jannaahs](https://github.com/jannaahs)**
 
 ## Special Thanks
-- **[All Contributions](https://github.com/OpenFactorioServerManager/factorio-server-manager/graphs/contributors)**
+- **[All Contributions](https://github.com/dnaroma/factorio-server-manager/graphs/contributors)**
 - **mickael9** for reverseengineering the factorio-save-file: https://forums.factorio.com/viewtopic.php?f=5&t=8568#
 
 ## License

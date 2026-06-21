@@ -106,13 +106,19 @@ func ModPortalLoginHandler(w http.ResponseWriter, r *http.Request) {
 	var data struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		ApiKey   string `json:"apiKey"`
 	}
 	resp, err = ReadFromRequestBody(w, r, &data)
 	if err != nil {
 		return
 	}
 
-	err, statusCode := factorio.FactorioLogin(data.Username, data.Password)
+	var statusCode int
+	if data.ApiKey != "" {
+		err, statusCode = factorio.FactorioApiKeyLogin(data.Username, data.ApiKey)
+	} else {
+		err, statusCode = factorio.FactorioLogin(data.Username, data.Password)
+	}
 	w.WriteHeader(statusCode)
 	if err != nil {
 		resp = fmt.Sprintf("Error trying to login into Factorio: %s", err)
