@@ -38,24 +38,46 @@ const saveModsLabel = save => {
 };
 
 const SaveModsCell = ({save}) => {
+    const [isHovered, setIsHovered] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
+    const [isPinned, setIsPinned] = useState(false);
     const count = saveModsCount(save);
     if (count === 0) {
         return "Unavailable";
     }
 
     const label = saveModsLabel(save);
-    const mods = saveModsList(save);
+    const mods = save.metadata?.mods || [];
+    const isOpen = isHovered || isFocused || isPinned;
 
     return (
-        <button
-            type="button"
-            className="py-1 px-2 bg-gray-light hover:bg-orange hover:glow-orange accentuated text-black font-bold whitespace-nowrap"
-            title={mods}
-            aria-label={`${label}: ${mods}`}
+        <div
+            className="relative inline-block"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
-            <FontAwesomeIcon icon={faList} className="mr-1"/>
-            {label}
-        </button>
+            <button
+                type="button"
+                className="py-1 px-2 bg-gray-light hover:bg-orange hover:glow-orange accentuated text-black font-bold whitespace-nowrap"
+                aria-expanded={isOpen}
+                aria-label={`${label}: ${saveModsList(save)}`}
+                onClick={() => setIsPinned(!isPinned)}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+            >
+                <FontAwesomeIcon icon={faList} className="mr-1"/>
+                {label}
+            </button>
+            {isOpen &&
+                <div className="absolute z-30 left-0 top-full mt-2 w-96 max-w-xs max-h-72 overflow-y-auto bg-black text-white shadow-lg accentuated p-3 whitespace-normal">
+                    {mods.map(mod =>
+                        <div key={`${mod.name}-${mod.version}`} className="text-sm leading-6">
+                            <span className="font-bold">{mod.name}</span> {mod.version}
+                        </div>
+                    )}
+                </div>
+            }
+        </div>
     );
 };
 
