@@ -46,3 +46,24 @@ func TestDeleteAllModsClearsContentsAndPreservesDirectory(t *testing.T) {
 		t.Fatalf("Expected mods dir to be empty, got %d entries", len(entries))
 	}
 }
+
+func TestValidateModPackNameRejectsUnsafeNames(t *testing.T) {
+	invalidNames := []string{
+		"",
+		"../pack",
+		"folder/pack",
+		`folder\pack`,
+		"/tmp/pack",
+		".",
+		"..",
+		"bad\x00pack",
+	}
+
+	for _, name := range invalidNames {
+		t.Run(name, func(t *testing.T) {
+			if err := validateModPackName(name); err == nil {
+				t.Fatalf("Expected invalid mod pack name: %q", name)
+			}
+		})
+	}
+}

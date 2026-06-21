@@ -66,7 +66,15 @@ const LoadMods = ({refreshMods}) => {
             return;
         }
 
-        await modResource.deleteAll();
+        const deleted = await modResource.deleteAll().then(() => true).catch(() => {
+            setIsLoading(false);
+            setLoadModsData(undefined);
+            window.flash(`Could not remove installed mods for save file ${data.save}.`, "red");
+            return false;
+        });
+        if (!deleted) {
+            return;
+        }
         await modResource.portal.installMultiple(mods)
             .then(() => {
                 refreshMods();

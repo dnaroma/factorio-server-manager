@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/OpenFactorioServerManager/factorio-server-manager/bootstrap"
 )
@@ -597,7 +598,7 @@ func sortModsResult(mods []ModsResult) {
 }
 
 func validateModPackName(name string) error {
-	if name == "" || filepath.Base(name) != name || name == "." || name == ".." {
+	if name == "" || filepath.Base(name) != name || strings.Contains(name, "\\") || strings.Contains(name, "\x00") || name == "." || name == ".." {
 		return errors.New("mod pack name must be a simple folder name")
 	}
 
