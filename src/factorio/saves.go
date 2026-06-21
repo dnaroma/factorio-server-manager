@@ -3,6 +3,7 @@ package factorio
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -19,9 +21,10 @@ import (
 const saveBackupDirName = "backups"
 
 type Save struct {
-	Name    string    `json:"name"`
-	LastMod time.Time `json:"last_mod"`
-	Size    int64     `json:"size"`
+	Name     string        `json:"name"`
+	LastMod  time.Time     `json:"last_mod"`
+	Size     int64         `json:"size"`
+	Metadata *SaveMetadata `json:"metadata,omitempty"`
 }
 
 type SaveBackup struct {
@@ -29,6 +32,18 @@ type SaveBackup struct {
 	SaveName string    `json:"save_name"`
 	LastMod  time.Time `json:"last_mod"`
 	Size     int64     `json:"size"`
+}
+
+type SaveMetadata struct {
+	MapName         string        `json:"map_name,omitempty"`
+	FactorioVersion Version       `json:"factorio_version,omitempty"`
+	Mods            []SaveModInfo `json:"mods,omitempty"`
+	Error           string        `json:"error,omitempty"`
+}
+
+type SaveModInfo struct {
+	Name    string  `json:"name"`
+	Version Version `json:"version"`
 }
 
 func (s *Save) String() string {
@@ -72,6 +87,10 @@ func savePath(name string) (string, error) {
 func saveBackupDir() string {
 	config := bootstrap.GetConfig()
 	return filepath.Join(config.FactorioSavesDir, saveBackupDirName)
+}
+
+func saveBackupSchedulePath() string {
+	return filepath.Join(saveBackupDir(), "schedule.json")
 }
 
 func saveBackupPath(name string) (string, error) {
@@ -210,10 +229,12 @@ func ListSaves() (saves []Save, err error) {
 		if err != nil {
 			return saves, err
 		}
+		metadata := readSaveMetadata(filepath.Join(config.FactorioSavesDir, info.Name()))
 		saves = append(saves, Save{
-			info.Name(),
-			info.ModTime(),
-			info.Size(),
+			Name:     info.Name(),
+			LastMod:  info.ModTime(),
+			Size:     info.Size(),
+			Metadata: metadata,
 		})
 	}
 
@@ -346,9 +367,10 @@ func RestoreSave(backupName, targetName string) (*Save, error) {
 		return nil, err
 	}
 	return &Save{
-		Name:    targetName,
-		LastMod: info.ModTime(),
-		Size:    info.Size(),
+		Name:     targetName,
+		LastMod:  info.ModTime(),
+		Size:     info.Size(),
+		Metadata: readSaveMetadata(dst),
 	}, nil
 }
 
@@ -387,9 +409,10 @@ func RenameSave(name, newName string) (*Save, error) {
 		return nil, err
 	}
 	return &Save{
-		Name:    newName,
-		LastMod: info.ModTime(),
-		Size:    info.Size(),
+		Name:     newName,
+		LastMod:  info.ModTime(),
+		Size:     info.Size(),
+		Metadata: readSaveMetadata(dst),
 	}, nil
 }
 
@@ -423,9 +446,10 @@ func DuplicateSave(name, newName string) (*Save, error) {
 		return nil, err
 	}
 	return &Save{
-		Name:    newName,
-		LastMod: info.ModTime(),
-		Size:    info.Size(),
+		Name:     newName,
+		LastMod:  info.ModTime(),
+		Size:     info.Size(),
+		Metadata: readSaveMetadata(dst),
 	}, nil
 }
 
@@ -459,12 +483,195 @@ func GetLatestSave() (save Save, err error) {
 	for _, item := range saves {
 		if save.LastMod.Before(item.LastMod) {
 			save = Save{
-				Name:    item.Name,
-				LastMod: item.LastMod,
-				Size:    item.Size,
+				Name:     item.Name,
+				LastMod:  item.LastMod,
+				Size:     item.Size,
+				Metadata: item.Metadata,
 			}
 		}
 	}
 
 	return
+}
+
+func readSaveMetadata(path string) *SaveMetadata {
+	f, err := OpenArchiveFile(path, "level.dat", "level-init.dat")
+	if err != nil {
+		return &SaveMetadata{Error: err.Error()}
+	}
+	defer f.Close()
+
+	var header SaveHeader
+	if err := header.ReadFrom(f); err != nil {
+		return &SaveMetadata{Error: err.Error()}
+	}
+
+	mods := make([]SaveModInfo, 0, len(header.Mods))
+	for _, mod := range header.Mods {
+		mods = append(mods, SaveModInfo{
+			Name:    mod.Name,
+			Version: mod.Version,
+		})
+	}
+
+	return &SaveMetadata{
+		MapName:         header.Name,
+		FactorioVersion: header.FactorioVersion,
+		Mods:            mods,
+	}
+}
+
+type SaveBackupSchedule struct {
+	Enabled         bool      `json:"enabled"`
+	IntervalMinutes int       `json:"interval_minutes"`
+	Retention       int       `json:"retention"`
+	Mode            string    `json:"mode"`
+	LastRun         time.Time `json:"last_run,omitempty"`
+	NextRun         time.Time `json:"next_run,omitempty"`
+}
+
+func defaultSaveBackupSchedule() SaveBackupSchedule {
+	return SaveBackupSchedule{
+		Enabled:         false,
+		IntervalMinutes: 60,
+		Retention:       5,
+		Mode:            "latest",
+	}
+}
+
+func LoadSaveBackupSchedule() (SaveBackupSchedule, error) {
+	schedule := defaultSaveBackupSchedule()
+	data, err := os.ReadFile(saveBackupSchedulePath())
+	if errors.Is(err, os.ErrNotExist) {
+		return schedule, nil
+	}
+	if err != nil {
+		return schedule, err
+	}
+	if err := json.Unmarshal(data, &schedule); err != nil {
+		return schedule, err
+	}
+	return normalizeSaveBackupSchedule(schedule)
+}
+
+func SaveBackupScheduleConfig(schedule SaveBackupSchedule) (SaveBackupSchedule, error) {
+	schedule, err := normalizeSaveBackupSchedule(schedule)
+	if err != nil {
+		return schedule, err
+	}
+	if schedule.Enabled && schedule.NextRun.IsZero() {
+		schedule.NextRun = time.Now().UTC().Add(time.Duration(schedule.IntervalMinutes) * time.Minute)
+	}
+	data, err := json.MarshalIndent(schedule, "", "    ")
+	if err != nil {
+		return schedule, err
+	}
+	if err := os.MkdirAll(saveBackupDir(), 0755); err != nil {
+		return schedule, err
+	}
+	return schedule, os.WriteFile(saveBackupSchedulePath(), data, 0664)
+}
+
+func normalizeSaveBackupSchedule(schedule SaveBackupSchedule) (SaveBackupSchedule, error) {
+	if schedule.IntervalMinutes <= 0 {
+		return schedule, errors.New("interval_minutes must be greater than zero")
+	}
+	if schedule.Retention <= 0 {
+		return schedule, errors.New("retention must be greater than zero")
+	}
+	if schedule.Mode == "" {
+		schedule.Mode = "latest"
+	}
+	if schedule.Mode != "latest" && schedule.Mode != "all" {
+		return schedule, errors.New("mode must be latest or all")
+	}
+	return schedule, nil
+}
+
+func RunScheduledSaveBackup() (SaveBackupSchedule, []SaveBackup, error) {
+	schedule, err := LoadSaveBackupSchedule()
+	if err != nil {
+		return schedule, nil, err
+	}
+
+	backups, err := backupScheduledSaves(schedule)
+	if err != nil {
+		return schedule, backups, err
+	}
+	if err := PruneSaveBackups(schedule.Retention); err != nil {
+		return schedule, backups, err
+	}
+
+	schedule.LastRun = time.Now().UTC()
+	schedule.NextRun = schedule.LastRun.Add(time.Duration(schedule.IntervalMinutes) * time.Minute)
+	schedule, err = SaveBackupScheduleConfig(schedule)
+	return schedule, backups, err
+}
+
+func backupScheduledSaves(schedule SaveBackupSchedule) ([]SaveBackup, error) {
+	saves, err := ListSaves()
+	if err != nil {
+		return nil, err
+	}
+	if len(saves) == 0 {
+		return []SaveBackup{}, nil
+	}
+
+	if schedule.Mode == "latest" {
+		latest, err := GetLatestSave()
+		if err != nil {
+			return nil, err
+		}
+		backup, err := BackupSave(latest.Name)
+		if err != nil {
+			return nil, err
+		}
+		return []SaveBackup{*backup}, nil
+	}
+
+	backups := make([]SaveBackup, 0, len(saves))
+	for _, save := range saves {
+		backup, err := BackupSave(save.Name)
+		if err != nil {
+			return backups, err
+		}
+		backups = append(backups, *backup)
+	}
+	return backups, nil
+}
+
+func PruneSaveBackups(retention int) error {
+	if retention <= 0 {
+		return errors.New("retention must be greater than zero")
+	}
+	backups, err := ListSaveBackups()
+	if err != nil {
+		return err
+	}
+
+	bySave := make(map[string][]SaveBackup)
+	for _, backup := range backups {
+		bySave[backup.SaveName] = append(bySave[backup.SaveName], backup)
+	}
+
+	for _, saveBackups := range bySave {
+		sortSaveBackupsNewestFirst(saveBackups)
+		for _, backup := range saveBackups[retention:] {
+			path, err := saveBackupPath(backup.Name)
+			if err != nil {
+				return err
+			}
+			if err := os.Remove(path); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func sortSaveBackupsNewestFirst(backups []SaveBackup) {
+	sort.Slice(backups, func(i, j int) bool {
+		return backups[i].LastMod.After(backups[j].LastMod)
+	})
 }

@@ -172,6 +172,24 @@ var apiRoutes = Routes{
 		ListSaveBackups,
 		false,
 	}, {
+		"GetSaveBackupSchedule",
+		"GET",
+		"/saves/backup/schedule",
+		GetSaveBackupSchedule,
+		false,
+	}, {
+		"UpdateSaveBackupSchedule",
+		"POST",
+		"/saves/backup/schedule",
+		UpdateSaveBackupSchedule,
+		false,
+	}, {
+		"RunSaveBackupSchedule",
+		"POST",
+		"/saves/backup/schedule/run",
+		RunSaveBackupSchedule,
+		false,
+	}, {
 		"BackupSave",
 		"POST",
 		"/saves/backup/{save}",

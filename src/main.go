@@ -23,6 +23,7 @@ func main() {
 		log.Printf("Error occurred during Server initialization: %v\n", err)
 		return
 	}
+	factorio.StartSaveBackupScheduler()
 
 	// Initialize authentication system
 	api.SetupAuth()
