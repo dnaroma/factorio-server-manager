@@ -73,12 +73,14 @@ mise exec -- gofmt -w .
 
 ## Local Runtime
 
-Build the frontend first, then run the backend from the repository root so it can serve `app/`:
+Build the frontend first, then build the backend and run it from the repository root so it can serve `app/`:
 
 ```sh
 mise exec -- make app/bundle
 cd src
-mise exec -- go run . --conf ../conf.json.example --dir ../
+mise exec -- go build -o ../factorio-server-manager-dev .
+cd ..
+./factorio-server-manager-dev --conf conf.json.example --dir .
 ```
 
 Useful flags and matching environment variables are defined in `src/bootstrap/config.go`. Common ones:
