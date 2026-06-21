@@ -7,6 +7,7 @@ const Input = ({
                    defaultValue = undefined,
                    hasAutoComplete = true,
                    onKeyDown = () => undefined,
+                   onChange = undefined,
                    min = undefined,
                    max = undefined,
                    value = undefined,
@@ -19,6 +20,7 @@ const Input = ({
             {...register}
             type={type}
             onKeyDown={onKeyDown}
+            {...(onChange ? {onChange} : {})}
             autoComplete={hasAutoComplete ? "on" : "off"}
             defaultValue={defaultValue}
             min={min}
