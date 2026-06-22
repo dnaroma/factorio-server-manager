@@ -31,11 +31,11 @@ This roadmap focuses on features that make Factorio Server Manager more useful f
 
 ### Server Settings
 
-- [ ] Group server settings by purpose instead of rendering the raw JSON structure.
-- [ ] Add field-specific validation for visibility, autosave, AFK auto-kick, tags, max players, admins, and passwords.
-- [ ] Add a preview of the exact `server-settings.json` changes before saving.
-- [ ] Keep comments and unknown settings when writing back the settings file.
-- [ ] Warn when a setting change requires the Factorio server to be restarted.
+- [x] Group server settings by purpose instead of rendering the raw JSON structure.
+- [x] Add field-specific validation for visibility, autosave, AFK auto-kick, tags, max players, admins, and passwords.
+- [x] Add a preview of the exact `server-settings.json` changes before saving.
+- [x] Keep comments and unknown settings when writing back the settings file.
+- [x] Warn when a setting change requires the Factorio server to be restarted.
 
 ## Mid Term
 
