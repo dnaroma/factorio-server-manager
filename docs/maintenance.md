@@ -32,7 +32,7 @@ Avoid committing generated secrets or runtime database files.
 
 ## Save Backups
 
-Manual save backups are stored in a `backups` directory inside the configured saves directory. For the Docker image, this is under the persisted `/opt/factorio/saves` volume.
+Manual save backups are stored in a `backups` directory inside the configured saves directory. For the Docker image, this is under the persisted `/opt/factorio` volume.
 
 Backup and duplicate actions copy save files without stopping the server. Restore and rename require the Factorio server to be stopped because they replace or move active save files.
 

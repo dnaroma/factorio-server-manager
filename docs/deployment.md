@@ -49,10 +49,10 @@ docker compose -f docker-compose.simple.yaml up -d
 The compose files mount:
 
 - `./fsm-data` to `/opt/fsm-data`
-- `./factorio-data/saves` to `/opt/factorio/saves`
-- `./factorio-data/mods` to `/opt/factorio/mods`
-- `./factorio-data/config` to `/opt/factorio/config`
+- `./factorio-data` to `/opt/factorio`
 - `./factorio-data/mod_packs` to `/opt/fsm/mod_packs`
+
+Mounting the whole Factorio directory persists the downloaded Factorio binary, `data/`, saves, mods, and config across container rebuilds and restarts.
 
 Back up these directories before upgrades.
 
