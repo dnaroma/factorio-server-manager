@@ -1,25 +1,29 @@
 import React, {useEffect, useState} from "react";
 
-const Select = ({register = {}, options, className = "", defaultValue = "", disabled = undefined}) => {
+const Select = ({register = {}, options, className = "", defaultValue = "", disabled = undefined, value: controlledValue = undefined, onChange = undefined}) => {
 
     const [value, setValue] = useState(defaultValue);
+    const selectedValue = controlledValue !== undefined ? controlledValue : value;
 
     useEffect(() => {
-        if (value === "") {
+        if (controlledValue === undefined) {
             setValue(defaultValue)
         }
-    });
+    }, [defaultValue, controlledValue]);
 
     return (
         <div className={`${className} relative`}>
         <select
             className="shadow appearance-none border w-full py-2 px-3 text-black"
             {...register}
-            value={value}
+            value={selectedValue}
             disabled={disabled}
             onChange={optionElement => {
-                setValue(optionElement.target.value);
+                if (controlledValue === undefined) {
+                    setValue(optionElement.target.value);
+                }
                 register.onChange?.(optionElement);
+                onChange?.(optionElement);
             }}
         >
             {options.map(option => <option value={option.value} key={option.value}>{option.name}</option>)}
