@@ -13,4 +13,4 @@ trap cleanup EXIT
   make "build/${artifact}"
   cp "build/${artifact}" "docker/${artifact}"
 )
-docker build -f Dockerfile-local -t factorio-server-manager:dev .
+docker build --platform linux/amd64 -f Dockerfile-local -t factorio-server-manager:dev .

@@ -72,20 +72,49 @@ const mods = {
             const response = await client.get('/api/mods/packs/list');
             return response.data;
         },
-        create: async name => {
-            const response = await client.post('/api/mods/packs/create', {name});
+        create: async (name, description = "") => {
+            const response = await client.post('/api/mods/packs/create', {name, description});
+            return response.data;
+        },
+        import: async (name, file) => {
+            let formData = new FormData();
+            formData.append("name", name);
+            formData.append("mod_pack", file);
+
+            const response = await client.post('/api/mods/packs/import', formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data"
+                }
+            });
+            return response.data;
+        },
+        clone: async (sourceName, name, description = "") => {
+            const response = await client.post(`/api/mods/packs/${sourceName}/clone`, {name, description});
+            return response.data;
+        },
+        rename: async (oldName, name) => {
+            const response = await client.post(`/api/mods/packs/${oldName}/rename`, {name});
+            return response.data;
+        },
+        metadata: async (name, metadata) => {
+            const response = await client.post(`/api/mods/packs/${name}/metadata`, metadata);
             return response.data;
         },
         delete: async name => {
             const response = await client.post(`/api/mods/packs/${name}/delete`);
             return response.data;
         },
-        download: async name => {
-            const response = await client.get(`/api/mods/packs/${name}/download`);
-            return response.data;
-        },
+        downloadURL: name => `/api/mods/packs/${name}/download`,
         load: async name => {
             const response = await client.post(`/api/mods/packs/${name}/load`);
+            return response.data;
+        },
+        diff: async name => {
+            const response = await client.get(`/api/mods/packs/${name}/diff`);
+            return response.data;
+        },
+        validate: async name => {
+            const response = await client.get(`/api/mods/packs/${name}/validate`);
             return response.data;
         },
         mods: {

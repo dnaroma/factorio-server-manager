@@ -11,8 +11,8 @@
 - Install frontend dependencies: `CI=true mise exec -- pnpm install`
 - Build frontend assets: `mise exec -- make app/bundle` or `mise exec -- pnpm run build`
 - Start the Vite dev server: `mise exec -- pnpm run dev`
-- Run backend tests inside the Linux devcontainer: `cd src && mise exec -- go test ./... -v -test.short`
-- Run full backend tests inside the Linux devcontainer when Factorio credentials are available: `cd src && mise exec -- go test ./... -v`
+- Run backend tests in cached Linux Docker: `make test-go-docker`
+- Run focused/full backend tests in cached Linux Docker: `./scripts/go-test-docker.sh ./factorio -run TestName -v` or `./scripts/go-test-docker.sh ./... -v`
 - Build release bundle: `make build`
 - Clean generated artifacts: `make clean`
 
@@ -28,7 +28,7 @@
 - Do not edit generated frontend assets in `app/`; edit `ui/` and rebuild.
 - Do not commit local runtime files such as `conf.json`, `.env`, `dev/`, `dev_packs/`, `build/`, `node_modules/`, or generated bundles.
 - Preserve existing API routes and authentication behavior unless the task explicitly changes them.
-- Prefer short Go tests near the changed package; run them in the Linux devcontainer because the backend targets Linux deployments.
+- Prefer short Go tests near the changed package; run them through `scripts/go-test-docker.sh` because the backend targets Linux deployments and the script preserves Go module/build caches.
 - UI has no configured test runner.
 
 ## Project Conventions

@@ -83,7 +83,8 @@ func ModPackCreateHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
 
 	var modPackStruct struct {
-		Name string `json:"name"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
 	}
 	resp, err = ReadFromRequestBody(w, r, &modPackStruct)
 	if err != nil {
@@ -95,10 +96,111 @@ func ModPackCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = modPackMap.CreateModPack(modPackStruct.Name)
+	err = modPackMap.CreateModPack(modPackStruct.Name, modPackStruct.Description)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		resp = fmt.Sprintf("Error creating modpack file: %s", err)
+		log.Println(resp)
+		return
+	}
+
+	resp = modPackMap.ListInstalledModPacks()
+}
+
+func ModPackCloneHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var resp interface{}
+
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	err, modPackMap, modPackName, resp := ReadModPackRequest(w, r)
+	if err != nil {
+		return
+	}
+
+	var data struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	}
+	resp, err = ReadFromRequestBody(w, r, &data)
+	if err != nil {
+		return
+	}
+
+	err = modPackMap.CloneModPack(modPackName, data.Name, data.Description)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		resp = fmt.Sprintf("Error cloning modpack file: %s", err)
+		log.Println(resp)
+		return
+	}
+
+	resp = modPackMap.ListInstalledModPacks()
+}
+
+func ModPackRenameHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var resp interface{}
+
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	err, modPackMap, modPackName, resp := ReadModPackRequest(w, r)
+	if err != nil {
+		return
+	}
+
+	var data struct {
+		Name string `json:"name"`
+	}
+	resp, err = ReadFromRequestBody(w, r, &data)
+	if err != nil {
+		return
+	}
+
+	err = modPackMap.RenameModPack(modPackName, data.Name)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		resp = fmt.Sprintf("Error renaming modpack file: %s", err)
+		log.Println(resp)
+		return
+	}
+
+	resp = modPackMap.ListInstalledModPacks()
+}
+
+func ModPackMetadataHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var resp interface{}
+
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	err, modPackMap, modPackName, resp := ReadModPackRequest(w, r)
+	if err != nil {
+		return
+	}
+
+	var data factorio.ModPackMetadata
+	resp, err = ReadFromRequestBody(w, r, &data)
+	if err != nil {
+		return
+	}
+
+	err = modPackMap[modPackName].UpdateMetadata(data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		resp = fmt.Sprintf("Error updating modpack metadata: %s", err)
 		log.Println(resp)
 		return
 	}
@@ -196,6 +298,52 @@ func ModPackDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/zip;charset=UTF-8")
 }
 
+func ModPackImportHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var resp interface{}
+
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	name := r.FormValue("name")
+	formFile, fileHeader, err := r.FormFile("mod_pack")
+	if err != nil {
+		resp = fmt.Sprintf("error getting uploaded file: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	defer formFile.Close()
+
+	if name == "" {
+		name = fileNameWithoutExt(fileHeader.Filename)
+	}
+	if filepath.Ext(fileHeader.Filename) != ".zip" {
+		resp = "mod pack import requires a zip file"
+		log.Println(resp)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	modPackMap, resp, err := CreateNewModPackMap(w)
+	if err != nil {
+		return
+	}
+
+	err = modPackMap.ImportModPack(name, formFile, fileHeader.Size)
+	if err != nil {
+		resp = fmt.Sprintf("error importing mod pack: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp = modPackMap.ListInstalledModPacks()
+}
+
 func ModPackLoadHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var resp interface{}
@@ -224,9 +372,61 @@ func ModPackLoadHandler(w http.ResponseWriter, r *http.Request) {
 	resp = modPackMap[modPackName].Mods.ListInstalledMods()
 }
 
-//////////////////////////////////
+func ModPackDiffHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var resp interface{}
+
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	err, modPackMap, modPackName, resp := ReadModPackRequest(w, r)
+	if err != nil {
+		return
+	}
+
+	resp, err = modPackMap[modPackName].DiffAgainstActiveMods()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		resp = fmt.Sprintf("Error diffing modpack: %s", err)
+		log.Println(resp)
+	}
+}
+
+func ModPackValidateHandler(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	err, modPackMap, modPackName, resp := ReadModPackRequest(w, r)
+	if err != nil {
+		return
+	}
+
+	validation := modPackMap[modPackName].Validate()
+	if validation.Valid {
+		metadata := modPackMap[modPackName].Metadata
+		metadata.ValidatedFactorioVersion = factorio.GetFactorioServer().BaseModVersion
+		if err := modPackMap[modPackName].UpdateMetadata(metadata); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			resp = fmt.Sprintf("Error updating modpack validation metadata: %s", err)
+			log.Println(resp)
+			return
+		}
+	}
+
+	resp = validation
+}
+
+// ////////////////////////////////
 // Mods inside Mod Pack Handler //
-//////////////////////////////////
+// ////////////////////////////////
 func ModPackModListHandler(w http.ResponseWriter, r *http.Request) {
 	var resp interface{}
 
@@ -267,7 +467,7 @@ func ModPackModToggleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err, resp = packMap[packName].Mods.ModSimpleList.ToggleMod(modPackStruct.ModName)
+	err, resp = packMap[packName].Mods.ToggleModWithDependencyCheck(modPackStruct.ModName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		resp = fmt.Sprintf("Error toggling mod inside modPack: %s", err)
@@ -299,7 +499,7 @@ func ModPackModDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = packMap[packName].Mods.DeleteMod(modPackStruct.Name)
+	err = packMap[packName].Mods.DeleteModWithDependencyCheck(modPackStruct.Name)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		resp = fmt.Sprintf("Error deleting mod {%s} in modpack {%s}: %s", modPackStruct.Name, packName, err)
@@ -324,7 +524,7 @@ func ModPackModUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	var modPackStruct struct {
 		ModName     string `json:"modName"`
 		DownloadUrl string `json:"downloadUrl"`
-		Filename    string `json:"filename"`
+		Filename    string `json:"fileName"`
 	}
 	resp, err = ReadFromRequestBody(w, r, &modPackStruct)
 	if err != nil {
@@ -341,6 +541,12 @@ func ModPackModUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		resp = fmt.Sprintf("Error updating mod {%s} in modpack {%s}: %s", modPackStruct.ModName, packName, err)
+		log.Println(resp)
+		return
+	}
+	if issues := packMap[packName].Mods.ValidateEnabledDependencies(); len(issues) > 0 {
+		w.WriteHeader(http.StatusInternalServerError)
+		resp = fmt.Sprintf("Error updating mod {%s} in modpack {%s}: dependency validation failed: %v", modPackStruct.ModName, packName, issues)
 		log.Println(resp)
 		return
 	}
@@ -361,6 +567,11 @@ func ModPackModUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+}
+
+func fileNameWithoutExt(name string) string {
+	extension := filepath.Ext(name)
+	return name[:len(name)-len(extension)]
 }
 
 func ModPackModDeleteAllHandler(w http.ResponseWriter, r *http.Request) {

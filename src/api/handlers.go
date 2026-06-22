@@ -312,6 +312,75 @@ func BackupSave(w http.ResponseWriter, r *http.Request) {
 	resp = backup
 }
 
+func GetSaveBackupSchedule(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	schedule, err := factorio.LoadSaveBackupSchedule()
+	if err != nil {
+		resp = fmt.Sprintf("Error loading save backup schedule: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp = schedule
+}
+
+func UpdateSaveBackupSchedule(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	var schedule factorio.SaveBackupSchedule
+	resp, err := ReadFromRequestBody(w, r, &schedule)
+	if err != nil {
+		return
+	}
+
+	schedule, err = factorio.SaveBackupScheduleConfig(schedule)
+	if err != nil {
+		resp = fmt.Sprintf("Error saving save backup schedule: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	resp = schedule
+}
+
+func RunSaveBackupSchedule(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	schedule, backups, err := factorio.RunScheduledSaveBackup()
+	if err != nil {
+		resp = fmt.Sprintf("Error running save backup schedule: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp = struct {
+		Schedule factorio.SaveBackupSchedule `json:"schedule"`
+		Backups  []factorio.SaveBackup       `json:"backups"`
+	}{
+		Schedule: schedule,
+		Backups:  backups,
+	}
+}
+
 func RestoreSave(w http.ResponseWriter, r *http.Request) {
 	var resp interface{}
 	defer func() {

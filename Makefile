@@ -27,6 +27,9 @@ factorio-server-manager-linux:
 gen_release: build/factorio-server-manager-linux.zip
 	@echo "Done"
 
+test-go-docker:
+	@./scripts/go-test-docker.sh
+
 clean:
 	@echo "Cleaning"
 	@-rm -r build/

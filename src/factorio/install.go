@@ -136,6 +136,10 @@ func InstallFactorio(version string) error {
 		updateInstallState("failed", version, fmt.Sprintf("Extract failed: %s", err), progressReader.downloaded, resp.ContentLength)
 		return err
 	}
+	if err := EnsureConfig(config.FactorioConfigFile); err != nil {
+		updateInstallState("failed", version, fmt.Sprintf("Could not initialize config.ini: %s", err), progressReader.downloaded, resp.ContentLength)
+		return err
+	}
 
 	updateInstallState("initializing", version, "Loading Factorio server metadata", progressReader.downloaded, resp.ContentLength)
 	if err := NewFactorioServer(); err != nil {
@@ -196,14 +200,23 @@ func hasUpdate(installed Version, latestStable, latest string) (bool, string) {
 		return false, ""
 	}
 
-	latestVersion := Version{}
-	if latest != "" && latestVersion.UnmarshalText([]byte(latest)) == nil && latestVersion.Greater(installed) {
-		return true, latest
+	stableVersion := Version{}
+	if latestStable == "" || stableVersion.UnmarshalText([]byte(latestStable)) != nil {
+		return false, ""
 	}
 
-	stableVersion := Version{}
-	if latestStable != "" && stableVersion.UnmarshalText([]byte(latestStable)) == nil && stableVersion.Greater(installed) {
-		return true, latestStable
+	if !installed.Greater(stableVersion) {
+		if stableVersion.Greater(installed) {
+			return true, latestStable
+		}
+		return false, ""
+	}
+
+	latestVersion := Version{}
+	if latest != "" && latestVersion.UnmarshalText([]byte(latest)) == nil {
+		if latestVersion.Greater(installed) {
+			return true, latest
+		}
 	}
 
 	return false, ""

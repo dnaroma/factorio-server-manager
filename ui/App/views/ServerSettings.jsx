@@ -24,7 +24,7 @@ const ServerSettings = () => {
                 public: visibility.public ?? true,
                 lan: visibility.lan ?? true,
             },
-            _comment_visibility: settings?._comment_visibility || "public: publish the game on the Factorio public game list; lan: announce the game on LAN.",
+            _comment_visibility: settings?._comment_visibility || "public: publish the game on the Factorio public game list.\nlan: announce the game on LAN.",
         };
     };
 
@@ -164,7 +164,7 @@ const ServerSettings = () => {
                             return (
                                 <div className="mb-4" key={`wrapper-${key}`}>
                                     {formTypeField(key, value, label)}
-                                    <p className="text-sm italic">{comment}</p>
+                                    <p className="text-sm italic whitespace-pre-line">{comment}</p>
                                 </div>
                             )
                         })}

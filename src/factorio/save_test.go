@@ -8,6 +8,43 @@ import (
 	"github.com/OpenFactorioServerManager/factorio-server-manager/bootstrap"
 )
 
+func Test2_0(t *testing.T) {
+	file, err := OpenArchiveFile("../factorio_testfiles/test_2_0.zip", "level-init.dat")
+	if err != nil {
+		t.Fatalf("Error opening level-init.dat: %s", err)
+	}
+	defer file.Close()
+
+	var header SaveHeader
+	err = header.ReadFrom(file)
+	if err != nil {
+		t.Fatalf("Error reading header: %s", err)
+	}
+
+	if header.FactorioVersion != (Version{2, 0, 76, 0}) {
+		t.Fatalf("Wrong Factorio version: %s", header.FactorioVersion)
+	}
+	if header.LoadedFromBuild != 84451 {
+		t.Fatalf("Wrong loaded from build: %d", header.LoadedFromBuild)
+	}
+	if ticks := readSavePlayTimeTicks("../factorio_testfiles/test_2_0.zip"); ticks != 20943412 {
+		t.Fatalf("Wrong play time ticks: %d", ticks)
+	}
+	if len(header.Mods) != 52 {
+		t.Fatalf("Expected 52 mods, got %d", len(header.Mods))
+	}
+
+	modNames := make(map[string]bool, len(header.Mods))
+	for _, mod := range header.Mods {
+		modNames[mod.Name] = true
+	}
+	for _, name := range []string{"base", "space-age", "quality", "elevated-rails", "helmod", "Factorio-Ex"} {
+		if !modNames[name] {
+			t.Fatalf("Expected mod %q in parsed save mods, got %v", name, modNames)
+		}
+	}
+}
+
 // 1.1.14 changed the format of the saves, so new test has to be done
 func Test1_1_14(t *testing.T) {
 	file, err := OpenArchiveFile("../factorio_testfiles/test_1_1_14.zip", "level-init.dat")

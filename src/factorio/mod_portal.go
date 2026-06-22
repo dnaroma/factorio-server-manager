@@ -18,7 +18,8 @@ type ModPortalStruct struct {
 		DownloadURL string `json:"download_url"`
 		FileName    string `json:"file_name"`
 		InfoJSON    struct {
-			FactorioVersion Version `json:"factorio_version"`
+			FactorioVersion Version  `json:"factorio_version"`
+			Dependencies    []string `json:"dependencies"`
 		} `json:"info_json"`
 		ReleasedAt    time.Time `json:"released_at"`
 		Sha1          string    `json:"sha1"`

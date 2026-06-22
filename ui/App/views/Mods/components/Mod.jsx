@@ -8,66 +8,46 @@ import {
     faToggleOn,
     faTrashAlt
 } from "@fortawesome/free-solid-svg-icons";
-import modsResource from "../../../../api/resources/mods";
-import React, {useEffect, useState} from "react";
-import {coerce, gt, satisfies} from "semver";
+import React, {useState} from "react";
 
-const Mod = ({mod, factorioVersion, toggleMod, deleteMod, updateMod, addUpdatableMod, disabled = false}) => {
+const formatDate = value => value ? new Date(value).toLocaleDateString() : "Unknown";
 
-    const [newVersion, setNewVersion] = useState(null)
+const dependencyText = dependencies => {
+    if (!dependencies || dependencies.length === 0) {
+        return "None";
+    }
+
+    return dependencies.slice(0, 3).join(", ") + (dependencies.length > 3 ? ` +${dependencies.length - 3}` : "");
+};
+
+const Mod = ({
+                 mod,
+                 toggleMod,
+                 deleteMod,
+                 updateMod,
+                 metadata,
+                 selectedForUpdate = false,
+                 toggleSelectedUpdate = () => undefined,
+                 disabled = false
+             }) => {
+
     const [icon, setIcon] = useState(faArrowCircleUp)
+    const newVersion = metadata?.update;
     const toggleClassName = mod.enabled
         ? "bg-green hover:bg-green-light hover:glow-green"
         : "bg-red hover:bg-red-light hover:glow-red";
 
-    useEffect(() => {
-        if (!disabled) {
-            (async () => {
-                const data = await modsResource.portal.info(mod.name)
-
-                //get newest COMPATIBLE release
-                let newestRelease;
-                data.releases.forEach(release => {
-                    if (
-                        gt(
-                            coerce(release.version),
-                            coerce(mod.version)
-                        ) && (
-                            satisfies(factorioVersion, "~" + coerce(release.info_json.factorio_version).version) ||
-                            (
-                                satisfies(factorioVersion, "1.0.0") &&
-                                satisfies(coerce(release.info_json.factorio_version), "0.18.x")
-                            )
-                        )
-                    ) {
-                        if (!newestRelease) {
-                            newestRelease = release;
-                        } else if (gt(coerce(release.version).version, coerce(newestRelease.version).version)) {
-                            newestRelease = release;
-                        }
-                    }
-                });
-
-                if (newestRelease && newestRelease.version !== mod.version) {
-                    const installableVersion = {
-                        downloadUrl: newestRelease.download_url,
-                        fileName: newestRelease.file_name,
-                        modName: mod.name
-                    }
-                    setNewVersion(installableVersion);
-                    if (addUpdatableMod !== null) {
-                        addUpdatableMod(installableVersion)
-                    }
-                } else {
-                    setNewVersion(null);
-                }
-
-            })();
-        }
-    }, [mod]);
-
     return (
         <tr className="py-1">
+            {!disabled &&
+                <td className="pr-4">
+                    <input type="checkbox"
+                           disabled={!newVersion}
+                           checked={selectedForUpdate}
+                           onChange={() => toggleSelectedUpdate(mod.name)}
+                    />
+                </td>
+            }
             <td className="pr-4">{mod.title}</td>
             <td className="pr-4">
                 {
@@ -103,7 +83,18 @@ const Mod = ({mod, factorioVersion, toggleMod, deleteMod, updateMod, addUpdatabl
                                                 }}
                                                 className="hover:text-orange cursor-pointer ml-1"
                                                 icon={icon}/>}</td>
+            <td className="pr-4">{metadata?.latestVersion || "Unknown"}</td>
+            <td className="pr-4">{formatDate(metadata?.latestReleasedAt)}</td>
             <td className="pr-4">{mod.factorio_version}</td>
+            <td className="pr-4">{metadata?.factorioVersion || "Unknown"}</td>
+            <td className="pr-4" title={metadata?.dependencies?.join(", ") || ""}>{dependencyText(metadata?.dependencies)}</td>
+            <td className="pr-4">
+                {metadata?.changelogUrl
+                    ? <a className="text-orange hover:text-orange-light" href={metadata.changelogUrl} target="_blank" rel="noreferrer">Changelog</a>
+                    : "Unknown"
+                }
+                {metadata?.reason && <div className="text-xs text-red">{metadata.reason}</div>}
+            </td>
             {
                 !disabled &&
                 <td className="pr-4">

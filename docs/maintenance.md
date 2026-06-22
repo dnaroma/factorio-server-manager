@@ -52,10 +52,11 @@ mise exec -- pnpm run build
 Backend:
 
 ```sh
-cd src
-mise exec -- go mod tidy
-mise exec -- go test ./... -v -test.short
+mise exec -- go -C src mod tidy
+make test-go-docker
 ```
+
+`make test-go-docker` uses Docker named volumes for the Go module cache and build cache. Use `./scripts/go-test-docker.sh ./... -v` for full tests or pass a package/test filter for focused runs.
 
 ## Release Notes
 

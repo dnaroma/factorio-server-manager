@@ -23,26 +23,25 @@ type LoginSuccessResponse struct {
 }
 
 func DeleteAllMods() error {
-	var err error
 	config := bootstrap.GetConfig()
-	modsDirInfo, err := os.Stat(config.FactorioModsDir)
-	if err != nil {
-		log.Printf("error getting stats of FactorioModsDir: %s", err)
+	if err := clearDirectoryContents(config.FactorioModsDir); err != nil {
+		log.Printf("clearing FactorioModsDir failed: %s", err)
 		return err
 	}
 
-	modsDirPerm := modsDirInfo.Mode().Perm()
+	return nil
+}
 
-	err = os.RemoveAll(config.FactorioModsDir)
+func clearDirectoryContents(path string) error {
+	entries, err := os.ReadDir(path)
 	if err != nil {
-		log.Printf("removing FactorioModsDir failed: %s", err)
 		return err
 	}
 
-	err = os.Mkdir(config.FactorioModsDir, modsDirPerm)
-	if err != nil {
-		log.Printf("error recreating modPackDir: %s", err)
-		return err
+	for _, entry := range entries {
+		if err := os.RemoveAll(filepath.Join(path, entry.Name())); err != nil {
+			return err
+		}
 	}
 
 	return nil

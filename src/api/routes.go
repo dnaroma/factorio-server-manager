@@ -172,6 +172,24 @@ var apiRoutes = Routes{
 		ListSaveBackups,
 		false,
 	}, {
+		"GetSaveBackupSchedule",
+		"GET",
+		"/saves/backup/schedule",
+		GetSaveBackupSchedule,
+		false,
+	}, {
+		"UpdateSaveBackupSchedule",
+		"POST",
+		"/saves/backup/schedule",
+		UpdateSaveBackupSchedule,
+		false,
+	}, {
+		"RunSaveBackupSchedule",
+		"POST",
+		"/saves/backup/schedule/run",
+		RunSaveBackupSchedule,
+		false,
+	}, {
 		"BackupSave",
 		"POST",
 		"/saves/backup/{save}",
@@ -406,6 +424,30 @@ var apiRoutes = Routes{
 		ModPackCreateHandler,
 		false,
 	}, {
+		"ModPackImport",
+		"POST",
+		"/mods/packs/import",
+		ModPackImportHandler,
+		false,
+	}, {
+		"ModPackClone",
+		"POST",
+		"/mods/packs/{modpack}/clone",
+		ModPackCloneHandler,
+		false,
+	}, {
+		"ModPackRename",
+		"POST",
+		"/mods/packs/{modpack}/rename",
+		ModPackRenameHandler,
+		false,
+	}, {
+		"ModPackMetadata",
+		"POST",
+		"/mods/packs/{modpack}/metadata",
+		ModPackMetadataHandler,
+		false,
+	}, {
 		"ModPackDelete",
 		"POST",
 		"/mods/packs/{modpack}/delete",
@@ -423,6 +465,18 @@ var apiRoutes = Routes{
 		"/mods/packs/{modpack}/load",
 		ModPackLoadHandler,
 		true,
+	}, {
+		"ModPackDiff",
+		"GET",
+		"/mods/packs/{modpack}/diff",
+		ModPackDiffHandler,
+		false,
+	}, {
+		"ModPackValidate",
+		"GET",
+		"/mods/packs/{modpack}/validate",
+		ModPackValidateHandler,
+		false,
 	},
 	// Mods inside Mod Packs
 	{

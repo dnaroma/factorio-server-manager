@@ -68,7 +68,7 @@ type SaveHeader struct {
 	SavingReplay              bool                         `json:"saving_replay"`
 	AllowNonAdminDebugOptions bool                         `json:"allow_non_admin_debug_options"`
 	LoadedFrom                Version                      `json:"loaded_from"`
-	LoadedFromBuild           uint16                       `json:"loaded_from_build"`
+	LoadedFromBuild           uint32                       `json:"loaded_from_build"`
 	AllowedCommands           uint8                        `json:"allowed_commands"`
 	Stats                     map[byte][]map[uint16]uint32 `json:"stats,omitempty"`
 	Mods                      []Mod                        `json:"mods"`
@@ -184,11 +184,19 @@ func (h *SaveHeader) ReadFrom(r io.Reader) (err error) {
 	}
 	h.LoadedFrom = Version(loadedFrom)
 
-	_, err = r.Read(scratch[:2])
-	if err != nil {
-		return fmt.Errorf("read LoadedFromBuild: %v", err)
+	if !h.FactorioVersion.Less(Version{2, 0, 0, 0}) {
+		_, err = r.Read(scratch[:4])
+		if err != nil {
+			return fmt.Errorf("read LoadedFromBuild: %v", err)
+		}
+		h.LoadedFromBuild = binary.LittleEndian.Uint32(scratch[:4])
+	} else {
+		_, err = r.Read(scratch[:2])
+		if err != nil {
+			return fmt.Errorf("read LoadedFromBuild: %v", err)
+		}
+		h.LoadedFromBuild = uint32(binary.LittleEndian.Uint16(scratch[:2]))
 	}
-	h.LoadedFromBuild = binary.LittleEndian.Uint16(scratch[:2])
 
 	_, err = r.Read(scratch[:1])
 	if err != nil {
@@ -200,6 +208,12 @@ func (h *SaveHeader) ReadFrom(r io.Reader) (err error) {
 			h.AllowedCommands = 2
 		} else {
 			h.AllowedCommands = 1
+		}
+	}
+	if !h.FactorioVersion.Less(Version{2, 0, 0, 0}) {
+		_, err = r.Read(scratch[:4])
+		if err != nil {
+			return fmt.Errorf("read factorio 2 header bytes: %v", err)
 		}
 	}
 
