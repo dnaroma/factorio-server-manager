@@ -60,12 +60,17 @@ const isReleaseCompatible = (release, factorioVersion) => {
         );
 };
 
+const releaseTimestamp = release => Date.parse(release.released_at || "") || 0;
+
 const newestRelease = releases => releases.reduce((newest, release) => {
     const version = releaseVersion(release);
     if (!version) {
         return newest;
     }
-    if (!newest || gt(version, releaseVersion(newest))) {
+    if (!newest || releaseTimestamp(release) > releaseTimestamp(newest)) {
+        return release;
+    }
+    if (releaseTimestamp(release) === releaseTimestamp(newest) && gt(version, releaseVersion(newest))) {
         return release;
     }
 
