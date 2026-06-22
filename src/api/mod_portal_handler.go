@@ -192,8 +192,8 @@ func ModPortalInstallMultipleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, datum := range data {
-		// skip base mod because it is already included in factorio
-		if datum.Name == "base" {
+		// skip built-in mods because they are included in factorio
+		if factorio.IsBuiltInMod(datum.Name) {
 			continue
 		}
 		details, err, statusCode := factorio.ModPortalModDetails(datum.Name)

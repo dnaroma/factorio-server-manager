@@ -650,8 +650,8 @@ func FactorioVersion(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
 	var server = factorio.GetFactorioServer()
-	resp["version"] = server.Version.String()
-	resp["base_mod_version"] = server.BaseModVersion
+	resp["version"] = server.Version.SemverString()
+	resp["base_mod_version"] = factorio.SemverString(server.BaseModVersion)
 }
 
 func FactorioInstallStatus(w http.ResponseWriter, r *http.Request) {

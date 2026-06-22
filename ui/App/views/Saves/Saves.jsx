@@ -19,6 +19,7 @@ import ConfirmDialog from "../../components/ConfirmDialog";
 import Modal from "../../components/Modal";
 import Input from "../../components/Input";
 import Label from "../../components/Label";
+import {formatFactorioVersion} from "../../utils/version";
 
 const formatSize = size => `${parseFloat(size / 1024 / 1024).toFixed(3)} MB`;
 const formatDate = value => value ? new Date(value).toLocaleString() : "Never";
@@ -41,7 +42,9 @@ const formatPlayTime = ticks => {
     return `${minutes}m`;
 };
 const saveMapName = save => save.metadata?.map_name || "Unavailable";
-const saveFactorioVersion = save => save.metadata?.factorio_version || "Unavailable";
+const saveFactorioVersion = save => save.metadata?.factorio_version
+    ? formatFactorioVersion(save.metadata.factorio_version)
+    : "Unavailable";
 const saveModsList = save => {
     const mods = save.metadata?.mods || [];
     return mods.map(mod => `${mod.name} ${mod.version}`).join(", ");

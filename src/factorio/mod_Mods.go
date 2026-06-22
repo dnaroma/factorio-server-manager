@@ -232,6 +232,18 @@ func requiredDependencyNames(dependencies []string) []string {
 	return required
 }
 
+var builtInMods = map[string]struct{}{
+	"base":           {},
+	"elevated-rails": {},
+	"quality":        {},
+	"space-age":      {},
+}
+
+func IsBuiltInMod(modName string) bool {
+	_, ok := builtInMods[modName]
+	return ok
+}
+
 func requiredDependencyName(dependency string) (string, bool) {
 	fields := strings.Fields(strings.TrimSpace(dependency))
 	if len(fields) == 0 {
@@ -245,7 +257,7 @@ func requiredDependencyName(dependency string) (string, bool) {
 	if strings.HasPrefix(name, "?") || strings.HasPrefix(name, "!") || strings.HasPrefix(name, "~") {
 		return "", false
 	}
-	if name == "base" {
+	if IsBuiltInMod(name) {
 		return "", false
 	}
 

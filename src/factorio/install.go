@@ -56,8 +56,8 @@ func GetInstallStatus() InstallStatus {
 
 	installState.Installed = IsFactorioInstalled()
 	installState.Installing = installing
-	installState.Version = server.Version.String()
-	installState.BaseModVersion = server.BaseModVersion
+	installState.Version = server.Version.SemverString()
+	installState.BaseModVersion = SemverString(server.BaseModVersion)
 	installState.LatestStable, installState.Latest = latestFactorioVersions()
 	installState.UpdateAvailable, installState.UpdateVersion = hasUpdate(server.Version, installState.LatestStable, installState.Latest)
 	if installState.Phase == "" {

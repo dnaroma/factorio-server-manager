@@ -14,20 +14,48 @@ import ModPack from "./components/ModPack";
 import ModList from "./components/ModList";
 import ImportModPack from "./components/ImportModPack";
 import {coerce, gt, satisfies} from "semver";
+import {formatFactorioVersion} from "../../utils/version";
 
 const releaseVersion = release => coerce(release.version);
 const modVersion = mod => coerce(mod.version);
 const factorioReleaseVersion = release => coerce(release.info_json.factorio_version);
+const builtInMods = ["base", "elevated-rails", "quality", "space-age"];
+
+const requiredDependencyName = dependency => {
+    const normalized = dependency.trim();
+    if (normalized === "") {
+        return null;
+    }
+
+    const fields = normalized.split(/\s+/);
+    const name = fields[0];
+    if (["?", "!", "~", "(?)"].includes(name)) {
+        return null;
+    }
+    if (name.startsWith("?") || name.startsWith("!") || name.startsWith("~")) {
+        return null;
+    }
+    if (builtInMods.includes(name)) {
+        return null;
+    }
+
+    return name;
+};
+
+const requiredDependencyNames = dependencies => (dependencies || [])
+    .map(requiredDependencyName)
+    .filter(Boolean);
 
 const isReleaseCompatible = (release, factorioVersion) => {
     const requiredFactorioVersion = factorioReleaseVersion(release);
-    if (!requiredFactorioVersion || !factorioVersion) {
+    const installedFactorioVersion = coerce(factorioVersion);
+    if (!requiredFactorioVersion || !installedFactorioVersion) {
         return false;
     }
 
-    return satisfies(factorioVersion, "~" + requiredFactorioVersion.version) ||
+    return satisfies(installedFactorioVersion.version, "~" + requiredFactorioVersion.version) ||
         (
-            satisfies(factorioVersion, "1.0.0") &&
+            satisfies(installedFactorioVersion.version, "1.0.0") &&
             satisfies(requiredFactorioVersion, "0.18.x")
         );
 };
@@ -59,7 +87,9 @@ const buildModMetadata = (mod, portalInfo, factorioVersion) => {
     const currentVersion = modVersion(mod);
     const latestVersion = latestRelease ? releaseVersion(latestRelease) : null;
     const latestCompatibleVersion = latestCompatibleRelease ? releaseVersion(latestCompatibleRelease) : null;
-    const dependencies = latestCompatibleRelease?.info_json?.dependencies || latestRelease?.info_json?.dependencies || mod.dependencies || [];
+    const dependencies = requiredDependencyNames(
+        latestCompatibleRelease?.info_json?.dependencies || latestRelease?.info_json?.dependencies || mod.dependencies
+    );
 
     let update = null;
     let status = "current";
@@ -77,10 +107,10 @@ const buildModMetadata = (mod, portalInfo, factorioVersion) => {
         };
     } else if (gt(latestVersion, currentVersion)) {
         status = "incompatible";
-        reason = `Latest release requires Factorio ${latestRelease.info_json.factorio_version}`;
+        reason = `Latest release requires Factorio ${formatFactorioVersion(latestRelease.info_json.factorio_version)}`;
     } else if (!mod.compatibility) {
         status = "incompatible";
-        reason = `Installed mod targets Factorio ${mod.factorio_version}`;
+        reason = `Installed mod targets Factorio ${formatFactorioVersion(mod.factorio_version)}`;
     }
 
     return {
@@ -90,7 +120,7 @@ const buildModMetadata = (mod, portalInfo, factorioVersion) => {
         latestCompatibleRelease,
         latestVersion: latestRelease?.version,
         latestReleasedAt: latestRelease?.released_at,
-        factorioVersion: latestRelease?.info_json?.factorio_version,
+        factorioVersion: formatFactorioVersion(latestRelease?.info_json?.factorio_version),
         dependencies,
         update,
         changelogUrl: `https://mods.factorio.com/mod/${mod.name}/changelog`,
@@ -109,7 +139,7 @@ const Mods = ({serverStatus}) => {
     const [selectedUpdates, setSelectedUpdates] = useState({});
 
     const fetchInstalledMods = () => {
-        modsResource.installed()
+        return modsResource.installed()
             .then(setInstalledMods);
     };
 

@@ -7,10 +7,11 @@ import {useForm} from "react-hook-form";
 import Select from "../components/Select";
 import Input from "../components/Input";
 import Error from "../components/Error";
+import {formatFactorioVersion} from "../utils/version";
 
 const Controls = ({serverStatus}) => {
 
-    const factorioVersion = serverStatus.fac_version ? serverStatus.fac_version : 'Unknown';
+    const factorioVersion = formatFactorioVersion(serverStatus.fac_version);
     const [saves, setSaves] = useState([]);
     const [isDisabled, setIsDisabled] = useState(true);
     const [isStopping, setIsStopping] = useState(false);
@@ -20,7 +21,7 @@ const Controls = ({serverStatus}) => {
         installed: serverStatus.installed,
         installing: false,
         version: factorioVersion,
-        base_mod_version: serverStatus.base_mod_version,
+        base_mod_version: formatFactorioVersion(serverStatus.base_mod_version),
         phase: 'idle',
         message: 'Ready',
         downloaded: 0,
