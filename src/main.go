@@ -24,6 +24,7 @@ func main() {
 		return
 	}
 	factorio.StartSaveBackupScheduler()
+	factorio.StartLifecycleScheduler()
 
 	// Initialize authentication system
 	api.SetupAuth()

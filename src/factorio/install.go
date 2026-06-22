@@ -77,6 +77,10 @@ func InstallFactorio(version string) error {
 	if !isValidFactorioDownloadVersion(version) {
 		return errors.New("version must be stable, latest, or a numeric Factorio version")
 	}
+	resolvedVersion, err := resolveInstallVersion(version)
+	if err != nil {
+		return err
+	}
 
 	if !installMu.TryLock() {
 		return errors.New("Factorio install is already running")
@@ -86,29 +90,37 @@ func InstallFactorio(version string) error {
 	if GetFactorioServer().GetRunning() {
 		return errors.New("Factorio server must be stopped before installing")
 	}
+	if IsFactorioInstalled() && resolvedVersion == GetFactorioServer().Version.SemverString() {
+		updateInstallState("complete", resolvedVersion, fmt.Sprintf("Factorio %s is already installed", resolvedVersion), 0, 0)
+		return nil
+	}
+	if err := validateSaveBackupBeforeVersionChange(resolvedVersion); err != nil {
+		updateInstallState("failed", resolvedVersion, err.Error(), 0, 0)
+		return err
+	}
 
 	config := bootstrap.GetConfig()
 	if err := os.MkdirAll(config.FactorioDir, 0755); err != nil {
 		return fmt.Errorf("create Factorio directory: %w", err)
 	}
 
-	url := fmt.Sprintf("https://www.factorio.com/get-download/%s/headless/linux64", version)
-	updateInstallState("downloading", version, "Downloading Factorio server archive", 0, 0)
+	url := fmt.Sprintf("https://www.factorio.com/get-download/%s/headless/linux64", resolvedVersion)
+	updateInstallState("downloading", resolvedVersion, "Downloading Factorio server archive", 0, 0)
 	resp, err := http.Get(url)
 	if err != nil {
-		updateInstallState("failed", version, fmt.Sprintf("Download failed: %s", err), 0, 0)
+		updateInstallState("failed", resolvedVersion, fmt.Sprintf("Download failed: %s", err), 0, 0)
 		return fmt.Errorf("download Factorio: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		updateInstallState("failed", version, fmt.Sprintf("Download failed: %s", resp.Status), 0, 0)
+		updateInstallState("failed", resolvedVersion, fmt.Sprintf("Download failed: %s", resp.Status), 0, 0)
 		return fmt.Errorf("download Factorio: unexpected status %s", resp.Status)
 	}
 
 	tmp, err := os.CreateTemp("", "factorio-*.tar.xz")
 	if err != nil {
-		updateInstallState("failed", version, fmt.Sprintf("Could not create temporary archive: %s", err), 0, 0)
+		updateInstallState("failed", resolvedVersion, fmt.Sprintf("Could not create temporary archive: %s", err), 0, 0)
 		return fmt.Errorf("create temp archive: %w", err)
 	}
 	tmpName := tmp.Name()
@@ -118,35 +130,35 @@ func InstallFactorio(version string) error {
 		reader: resp.Body,
 		total:  resp.ContentLength,
 		onProgress: func(downloaded, total int64) {
-			updateInstallState("downloading", version, "Downloading Factorio server archive", downloaded, total)
+			updateInstallState("downloading", resolvedVersion, "Downloading Factorio server archive", downloaded, total)
 		},
 	}
 	if _, err := io.Copy(tmp, progressReader); err != nil {
 		tmp.Close()
-		updateInstallState("failed", version, fmt.Sprintf("Download failed: %s", err), progressReader.downloaded, resp.ContentLength)
+		updateInstallState("failed", resolvedVersion, fmt.Sprintf("Download failed: %s", err), progressReader.downloaded, resp.ContentLength)
 		return fmt.Errorf("write temp archive: %w", err)
 	}
 	if err := tmp.Close(); err != nil {
-		updateInstallState("failed", version, fmt.Sprintf("Could not save archive: %s", err), progressReader.downloaded, resp.ContentLength)
+		updateInstallState("failed", resolvedVersion, fmt.Sprintf("Could not save archive: %s", err), progressReader.downloaded, resp.ContentLength)
 		return fmt.Errorf("close temp archive: %w", err)
 	}
 
-	updateInstallState("extracting", version, "Extracting Factorio server", progressReader.downloaded, resp.ContentLength)
+	updateInstallState("extracting", resolvedVersion, "Extracting Factorio server", progressReader.downloaded, resp.ContentLength)
 	if err := extractFactorioArchive(tmpName, config.FactorioDir); err != nil {
-		updateInstallState("failed", version, fmt.Sprintf("Extract failed: %s", err), progressReader.downloaded, resp.ContentLength)
+		updateInstallState("failed", resolvedVersion, fmt.Sprintf("Extract failed: %s", err), progressReader.downloaded, resp.ContentLength)
 		return err
 	}
 	if err := EnsureConfig(config.FactorioConfigFile); err != nil {
-		updateInstallState("failed", version, fmt.Sprintf("Could not initialize config.ini: %s", err), progressReader.downloaded, resp.ContentLength)
+		updateInstallState("failed", resolvedVersion, fmt.Sprintf("Could not initialize config.ini: %s", err), progressReader.downloaded, resp.ContentLength)
 		return err
 	}
 
-	updateInstallState("initializing", version, "Loading Factorio server metadata", progressReader.downloaded, resp.ContentLength)
+	updateInstallState("initializing", resolvedVersion, "Loading Factorio server metadata", progressReader.downloaded, resp.ContentLength)
 	if err := NewFactorioServer(); err != nil {
-		updateInstallState("failed", version, fmt.Sprintf("Initialization failed: %s", err), progressReader.downloaded, resp.ContentLength)
+		updateInstallState("failed", resolvedVersion, fmt.Sprintf("Initialization failed: %s", err), progressReader.downloaded, resp.ContentLength)
 		return err
 	}
-	updateInstallState("complete", version, "Factorio server installed", progressReader.downloaded, resp.ContentLength)
+	updateInstallState("complete", resolvedVersion, "Factorio server installed", progressReader.downloaded, resp.ContentLength)
 	return nil
 }
 
@@ -155,6 +167,49 @@ func isValidFactorioDownloadVersion(version string) bool {
 		return true
 	}
 	return regexp.MustCompile(`^\d+(\.\d+){1,3}$`).MatchString(version)
+}
+
+func resolveInstallVersion(version string) (string, error) {
+	if version == "stable" || version == "latest" {
+		stable, latest := latestFactorioVersions()
+		if version == "stable" {
+			if stable == "" {
+				return "", errors.New("could not determine latest stable Factorio version")
+			}
+			return stable, nil
+		}
+		if latest == "" {
+			return "", errors.New("could not determine latest experimental Factorio version")
+		}
+		return latest, nil
+	}
+
+	return SemverString(version), nil
+}
+
+func validateSaveBackupBeforeVersionChange(targetVersion string) error {
+	server := GetFactorioServer()
+	if targetVersion == server.Version.SemverString() {
+		return nil
+	}
+
+	saves, err := ListSaves()
+	if err != nil {
+		return fmt.Errorf("could not list saves before version change: %w", err)
+	}
+	if len(saves) == 0 {
+		return nil
+	}
+
+	backups, err := ListSaveBackups()
+	if err != nil {
+		return fmt.Errorf("could not list save backups before version change: %w", err)
+	}
+	if len(backups) == 0 {
+		return errors.New("create at least one save backup before changing Factorio versions")
+	}
+
+	return nil
 }
 
 func latestFactorioVersions() (string, string) {

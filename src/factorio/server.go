@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -36,6 +37,7 @@ type Server struct {
 	Settings       map[string]interface{} `json:"-"`
 	Rcon           *rcon.RemoteConsole    `json:"-"`
 	LogChan        chan []string          `json:"-"`
+	RecentLogs     []string               `json:"-"`
 }
 
 var instantiated Server
@@ -329,17 +331,24 @@ func (server *Server) Run() error {
 	err = server.Cmd.Start()
 	if err != nil {
 		log.Printf("Factorio process failed to start: %s", err)
+		AppendLifecycleEvent("start_failed", err.Error())
 		return err
 	}
 	server.SetRunning(true)
+	AppendLifecycleEvent("start", fmt.Sprintf("Started save %s on %s:%d", server.Savefile, server.BindIP, server.Port))
 
 	err = server.Cmd.Wait()
 	log.Printf("Factorio process is closed")
 	server.SetRunning(false)
 	if err != nil {
 		log.Printf("Factorio process exited with error: %s", err)
+		if !wasExpectedStop() {
+			RecordCrash(err.Error(), server.RecentLogs)
+		}
+		markExpectedStop(false)
 		return err
 	}
+	markExpectedStop(false)
 
 	return nil
 }
@@ -350,6 +359,7 @@ func (server *Server) parseRunningCommand(std io.ReadCloser) (err error) {
 		text := stdScanner.Text()
 
 		log.Printf("Factorio Server: %s", text)
+		server.rememberRecentLog(text)
 		if err := server.writeLog(text); err != nil {
 			log.Printf("Error: %s", err)
 		}
@@ -390,6 +400,13 @@ func (server *Server) parseRunningCommand(std io.ReadCloser) (err error) {
 		return err
 	}
 	return nil
+}
+
+func (server *Server) rememberRecentLog(text string) {
+	server.RecentLogs = append(server.RecentLogs, text)
+	if len(server.RecentLogs) > 20 {
+		server.RecentLogs = server.RecentLogs[len(server.RecentLogs)-20:]
+	}
 }
 
 func (server *Server) writeLog(logline string) error {

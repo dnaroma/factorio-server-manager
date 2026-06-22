@@ -274,6 +274,18 @@ var apiRoutes = Routes{
 		InstallFactorio,
 		true,
 	}, {
+		"GetServerLifecycle",
+		"GET",
+		"/server/lifecycle",
+		GetServerLifecycle,
+		false,
+	}, {
+		"UpdateServerLifecycle",
+		"POST",
+		"/server/lifecycle",
+		UpdateServerLifecycle,
+		true,
+	}, {
 		"LogoutUser",
 		"GET",
 		"/logout",
