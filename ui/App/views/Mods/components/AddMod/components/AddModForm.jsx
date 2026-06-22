@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import modsResource from "../../../../../../api/resources/mods";
 import Button from "../../../../../components/Button";
 import Label from "../../../../../components/Label";
@@ -24,6 +24,7 @@ const AddModForm = ({setIsFactorioAuthenticated, fuse, refetchInstalledMods}) =>
     const [releases, setReleases] = useState([]);
 
     const [autocomplete, setAutocomplete] = useState(NaN);
+    const wrapperRef = useRef(null);
     const mod = watch('mod');
 
     const logout = () => {
@@ -32,10 +33,15 @@ const AddModForm = ({setIsFactorioAuthenticated, fuse, refetchInstalledMods}) =>
     }
 
     const updateSuggestedMods = () => {
+        clearTimeout(autocomplete)
+        if (!mod?.trim()) {
+            setSuggestedMods([]);
+            return;
+        }
+
         if (typeof fuse != "undefined") {
             setHoveredMod(0)
-            clearTimeout(autocomplete)
-            setAutocomplete(setTimeout(() => setSuggestedMods(fuse.search(mod || '')), 200));
+            setAutocomplete(setTimeout(() => setSuggestedMods(fuse.search(mod)), 200));
         }
     };
 
@@ -56,6 +62,17 @@ const AddModForm = ({setIsFactorioAuthenticated, fuse, refetchInstalledMods}) =>
             updateSuggestedMods();
         }
     }, [mod]);
+
+    useEffect(() => {
+        const closeSuggestions = event => {
+            if (!wrapperRef.current?.contains(event.target)) {
+                setSuggestedMods([]);
+            }
+        };
+
+        document.addEventListener("mousedown", closeSuggestions);
+        return () => document.removeEventListener("mousedown", closeSuggestions);
+    }, []);
 
     const openSelectVersionModal = async data => {
         const mod = await modsResource.portal.info(selectedMod.item.name);
@@ -90,7 +107,9 @@ const AddModForm = ({setIsFactorioAuthenticated, fuse, refetchInstalledMods}) =>
                 decrementHoveredMod()
                 break;
             case 13: // enter
-                selectMod(suggestedMods[hoveredMod])
+                if (suggestedMods[hoveredMod]) {
+                    selectMod(suggestedMods[hoveredMod])
+                }
                 break;
             default:
                 break;
@@ -100,10 +119,14 @@ const AddModForm = ({setIsFactorioAuthenticated, fuse, refetchInstalledMods}) =>
     return (
         <form onSubmit={handleSubmit(openSelectVersionModal)}>
             <SelectVersionForm isOpen={isModalOpen} releases={releases} install={install} close={() => setIsModalOpen(false)}/>
-            <div className="mb-4 relative" >
+            <div className="mb-4 relative" ref={wrapperRef}>
                 <Label text="Mod" htmlFor="mod"/>
                 { typeof fuse !== "undefined"
-                    ? <Input register={register('mod',{required: true})} hasAutoComplete={false} onKeyDown={handleKeyDown}/>
+                    ? <Input register={register('mod',{required: true})}
+                             hasAutoComplete={false}
+                             onKeyDown={handleKeyDown}
+                             onFocus={updateSuggestedMods}
+                             onBlur={() => setTimeout(() => setSuggestedMods([]), 100)}/>
                     : <div className="border border-gray-medium w-full py-2 px-3 text-white">
                         <FontAwesomeIcon icon={faSpinner} spin={true}/> Loading List of Mods from <LinkModPortal/>
                     </div>

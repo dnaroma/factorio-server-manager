@@ -39,6 +39,8 @@ docker-compose -f docker-compose.simple.yaml up -d
 
 The container starts Factorio Server Manager without downloading Factorio. After logging in, install the Factorio headless server from the Server Status panel. Choose `Stable`, `Latest experimental`, or enter a specific version such as `1.1.110`.
 
+The example Compose files persist the whole Factorio directory by mounting `./factorio-data` to `/opt/factorio`. This keeps the downloaded Factorio binary and `data/` directory across container rebuilds and restarts, along with saves, mods, and config.
+
 ## Accessing the application
 
 Go to the domain specified in your `.env` file in your web browser. If running on localhost access the application at http://localhost
@@ -70,11 +72,11 @@ If you want to update Factorio:
 
 ## Save backups
 
-Manual save backups created in the UI are stored below `/opt/factorio/saves/backups`. The example Compose files mount `/opt/factorio/saves` to `./factorio-data/saves`, so backups persist across container restarts with the save files.
+Manual save backups created in the UI are stored below `/opt/factorio/saves/backups`. The example Compose files mount `/opt/factorio` to `./factorio-data`, so backups persist across container restarts with the save files.
 
 Restore operations write a temporary file in the saves volume and then rename it into place. This avoids partially restored saves when the container is stopped during a restore.
 
-These backups are on the same Docker volume as the saves. Back up `./factorio-data/saves` separately if you need protection from host disk or volume loss.
+These backups are on the same Docker volume as the saves. Back up `./factorio-data` separately if you need protection from host disk or volume loss.
 
 ## Security
 

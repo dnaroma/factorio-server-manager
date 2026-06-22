@@ -28,10 +28,15 @@ func TestMain(m *testing.M) {
 		log.Println("WARN: wasn't able to load env: ", err)
 	}
 
+	confFile, err := testConfigFile()
+	if err != nil {
+		log.Fatalf("Error creating test config file: %s", err)
+	}
+
 	// basic setup stuff
 	bootstrap.NewConfig([]string{
 		"--dir", os.Getenv("FSM_DIR"),
-		"--conf", os.Getenv("FSM_CONF"),
+		"--conf", confFile,
 		"--mod-pack-dir", os.Getenv("FSM_MODPACK_DIR"),
 		"--mod-dir", os.Getenv("mod_dir"),
 	})
@@ -57,6 +62,30 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(m.Run())
+}
+
+func testConfigFile() (string, error) {
+	source := os.Getenv("FSM_CONF")
+	if source == "" {
+		source = "../../conf.json.example"
+	}
+
+	fileBytes, err := os.ReadFile(source)
+	if err != nil {
+		return "", err
+	}
+
+	dir, err := os.MkdirTemp("", "fsm-api-test-*")
+	if err != nil {
+		return "", err
+	}
+
+	target := filepath.Join(dir, filepath.Base(source))
+	if err := os.WriteFile(target, fileBytes, 0644); err != nil {
+		return "", err
+	}
+
+	return target, nil
 }
 
 func CheckShort(t *testing.T) {

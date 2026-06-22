@@ -19,6 +19,18 @@ func (v Version) String() string {
 	return fmt.Sprintf("%d.%d.%d.%d", v[0], v[1], v[2], v[3])
 }
 
+func (v Version) SemverString() string {
+	return fmt.Sprintf("%d.%d.%d", v[0], v[1], v[2])
+}
+
+func SemverString(version string) string {
+	var v Version
+	if err := v.UnmarshalText([]byte(strings.TrimSpace(version))); err != nil {
+		return version
+	}
+	return v.SemverString()
+}
+
 // MarshalText implements encoding.TextMarshaller for Version
 func (v Version) MarshalText() (text []byte, err error) {
 	return []byte(v.String()), nil

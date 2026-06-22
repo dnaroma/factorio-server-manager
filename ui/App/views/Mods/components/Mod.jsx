@@ -9,6 +9,7 @@ import {
     faTrashAlt
 } from "@fortawesome/free-solid-svg-icons";
 import React, {useState} from "react";
+import {formatFactorioVersion} from "../../../utils/version";
 
 const formatDate = value => value ? new Date(value).toLocaleDateString() : "Unknown";
 
@@ -85,7 +86,7 @@ const Mod = ({
                                                 icon={icon}/>}</td>
             <td className="pr-4">{metadata?.latestVersion || "Unknown"}</td>
             <td className="pr-4">{formatDate(metadata?.latestReleasedAt)}</td>
-            <td className="pr-4">{mod.factorio_version}</td>
+            <td className="pr-4">{formatFactorioVersion(mod.factorio_version)}</td>
             <td className="pr-4">{metadata?.factorioVersion || "Unknown"}</td>
             <td className="pr-4" title={metadata?.dependencies?.join(", ") || ""}>{dependencyText(metadata?.dependencies)}</td>
             <td className="pr-4">

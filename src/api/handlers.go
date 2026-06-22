@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -407,6 +408,7 @@ func RestoreSave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp = save
+	factorio.AppendLifecycleEvent("restore", fmt.Sprintf("Restored save backup %s to %s", restoreRequest.BackupName, save.Name))
 }
 
 func RenameSave(w http.ResponseWriter, r *http.Request) {
@@ -548,6 +550,12 @@ func StartServer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	if issues := factorio.ValidateServerStart(server.Savefile); len(issues) > 0 {
+		resp = fmt.Sprintf("Error starting Factorio server: compatibility validation failed: %s", strings.Join(issues, "; "))
+		log.Println(resp)
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
 
 	go func() {
 		err = server.Run()
@@ -591,7 +599,8 @@ func StopServer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
 	var server = factorio.GetFactorioServer()
 	if server.GetRunning() {
-		err := server.Stop()
+		lifecycle, _ := factorio.LoadLifecycleConfig()
+		err := server.StopWithTimeout(lifecycle.GracefulStopTimeout)
 		if err != nil {
 			resp = fmt.Sprintf("Error stopping factorio server: %s", err)
 			log.Println(resp)
@@ -606,6 +615,45 @@ func StopServer(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
+}
+
+func GetServerLifecycle(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+	lifecycle, err := factorio.LoadLifecycleConfig()
+	if err != nil {
+		resp = fmt.Sprintf("Error loading server lifecycle config: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	resp = lifecycle
+}
+
+func UpdateServerLifecycle(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+	var lifecycle factorio.LifecycleConfig
+	resp, err := ReadFromRequestBody(w, r, &lifecycle)
+	if err != nil {
+		return
+	}
+
+	lifecycle, err = factorio.SaveLifecycleConfig(lifecycle)
+	if err != nil {
+		resp = fmt.Sprintf("Error saving server lifecycle config: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	factorio.AppendLifecycleEvent("config", "Updated server lifecycle settings")
+	resp = lifecycle
 }
 
 func KillServer(w http.ResponseWriter, r *http.Request) {
@@ -650,8 +698,8 @@ func FactorioVersion(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
 	var server = factorio.GetFactorioServer()
-	resp["version"] = server.Version.String()
-	resp["base_mod_version"] = server.BaseModVersion
+	resp["version"] = server.Version.SemverString()
+	resp["base_mod_version"] = factorio.SemverString(server.BaseModVersion)
 }
 
 func FactorioInstallStatus(w http.ResponseWriter, r *http.Request) {
@@ -691,7 +739,9 @@ func InstallFactorio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp = factorio.GetInstallStatus()
+	status := factorio.GetInstallStatus()
+	resp = status
+	factorio.AppendLifecycleEvent("update", fmt.Sprintf("Installed Factorio %s", status.Version))
 }
 
 // Unmarshall the User object from the given bytearray
@@ -1040,4 +1090,5 @@ func UpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp = fmt.Sprintf("Settings successfully saved")
+	factorio.AppendLifecycleEvent("config", "Updated server settings")
 }

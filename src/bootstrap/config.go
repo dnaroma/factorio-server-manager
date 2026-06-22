@@ -185,6 +185,10 @@ func (config *Config) loadServerConfig() {
 		config.SettingsFile = filepath.Join(config.FactorioConfigDir, config.SettingsFile)
 	}
 
+	if !filepath.IsAbs(config.FactorioCredentialsFile) {
+		config.FactorioCredentialsFile = filepath.Join(filepath.Dir(config.ConfFile), config.FactorioCredentialsFile)
+	}
+
 	if config.FactorioBaseModDir == "" {
 		config.FactorioBaseModDir = filepath.Join(config.FactorioDir, "data", "base")
 	}

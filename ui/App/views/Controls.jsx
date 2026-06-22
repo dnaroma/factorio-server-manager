@@ -7,20 +7,22 @@ import {useForm} from "react-hook-form";
 import Select from "../components/Select";
 import Input from "../components/Input";
 import Error from "../components/Error";
+import {formatFactorioVersion} from "../utils/version";
 
 const Controls = ({serverStatus}) => {
 
-    const factorioVersion = serverStatus.fac_version ? serverStatus.fac_version : 'Unknown';
+    const factorioVersion = formatFactorioVersion(serverStatus.fac_version);
     const [saves, setSaves] = useState([]);
     const [isDisabled, setIsDisabled] = useState(true);
     const [isStopping, setIsStopping] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
     const [isKilling, setIsKilling] = useState(false);
+    const [backups, setBackups] = useState([]);
     const [installStatus, setInstallStatus] = useState({
         installed: serverStatus.installed,
         installing: false,
         version: factorioVersion,
-        base_mod_version: serverStatus.base_mod_version,
+        base_mod_version: formatFactorioVersion(serverStatus.base_mod_version),
         phase: 'idle',
         message: 'Ready',
         downloaded: 0,
@@ -34,13 +36,21 @@ const Controls = ({serverStatus}) => {
     const [customInstallVersion, setCustomInstallVersion] = useState('');
     const [isInstalling, setIsInstalling] = useState(false);
     const [installError, setInstallError] = useState('');
+    const [startError, setStartError] = useState('');
+    const [lifecycle, setLifecycle] = useState(null);
+    const [isSavingLifecycle, setIsSavingLifecycle] = useState(false);
 
     const { handleSubmit, reset, register, formState: {errors} } = useForm();
 
     const startServer = async (data) => {
         setIsStarting(true);
+        setStartError('');
         try {
             await server.start(data.ip, parseInt(data.port), data.save);
+        } catch (error) {
+            const message = error?.response?.data || error.message;
+            setStartError(message);
+            window.flash(message, "red");
         } finally {
             setIsStarting(false);
         }
@@ -75,8 +85,15 @@ const Controls = ({serverStatus}) => {
         });
         try {
             const status = await server.install(version);
-            setInstallStatus(status);
-            setIsDisabled(saves.length > 0 ? undefined : true);
+            const [freshStatus, freshSaves, freshBackups] = await Promise.all([
+                server.installStatus(),
+                savesResource.list(true),
+                savesResource.backups(),
+            ]);
+            setInstallStatus(freshStatus || status);
+            setSaves(freshSaves);
+            setBackups(freshBackups);
+            setIsDisabled((freshStatus || status).installed && freshSaves.length > 0 ? undefined : true);
         } catch (error) {
             setInstallError(error?.response?.data || error.message);
         } finally {
@@ -89,20 +106,23 @@ const Controls = ({serverStatus}) => {
     }
 
     useEffect(() => {
-        server.installStatus()
-            .then(status => {
+        Promise.all([server.installStatus(), savesResource.list(true), savesResource.backups(), server.lifecycle()])
+            .then(([status, saveRes, backupRes, lifecycleRes]) => {
                 setInstallStatus(status);
-                return savesResource.list(true).then(res => ({status, res}));
-            })
-            .then(({status, res}) => {
-                setSaves(res);
-                if (status.installed && res.length > 0) {
+                setSaves(saveRes);
+                setBackups(backupRes);
+                setLifecycle(lifecycleRes);
+                if (status.installed && saveRes.length > 0) {
                     setIsDisabled(undefined);
                 } else {
                     setIsDisabled(true);
                 }
-                reset();
-            });
+                reset({
+                    ip: lifecycleRes?.startup_profile?.bindip || "0.0.0.0",
+                    port: lifecycleRes?.startup_profile?.port || 34197,
+                    save: lifecycleRes?.startup_profile?.savefile || saveRes.find((save) => save.name.startsWith('Load Latest'))?.name,
+                });
+            })
     }, [])
 
     useEffect(() => {
@@ -135,9 +155,48 @@ const Controls = ({serverStatus}) => {
         ? Math.min(100, Math.round((installStatus.downloaded / installStatus.total) * 100))
         : 0;
 
-    const installedVersion = installStatus.installed && installStatus.version !== '0.0.0.0'
+    const installedVersion = installStatus.installed && !['0.0.0', '0.0.0.0'].includes(installStatus.version)
         ? installStatus.version
         : 'Not installed';
+    const selectedInstallVersion = installVersionMode === 'stable'
+        ? installStatus.latest_stable
+        : installVersionMode === 'latest'
+            ? installStatus.latest
+            : customInstallVersion;
+    const isChangingInstalledVersion = installStatus.installed &&
+        selectedInstallVersion &&
+        selectedInstallVersion !== installStatus.version;
+    const needsBackupBeforeInstall = isChangingInstalledVersion && saves.length > 0 && backups.length === 0;
+    const installDisabled = serverStatus.running ||
+        needsBackupBeforeInstall ||
+        (installVersionMode === 'custom' && !customInstallVersion);
+    const updateLifecycleField = (section, field, value) => {
+        setLifecycle(current => ({
+            ...current,
+            [section]: {
+                ...current?.[section],
+                [field]: value
+            }
+        }));
+    };
+    const updateLifecycleRoot = (field, value) => {
+        setLifecycle(current => ({
+            ...current,
+            [field]: value
+        }));
+    };
+    const saveLifecycle = async () => {
+        setIsSavingLifecycle(true);
+        try {
+            const saved = await server.updateLifecycle(lifecycle);
+            setLifecycle(saved);
+            window.flash("Server lifecycle settings saved.", "green");
+        } catch (error) {
+            window.flash(error?.response?.data || error.message, "red");
+        } finally {
+            setIsSavingLifecycle(false);
+        }
+    };
 
     return (
         <form onSubmit={handleSubmit(startServer)}>
@@ -176,7 +235,7 @@ const Controls = ({serverStatus}) => {
                             <div className="lg:w-1/5 mb-2 mr-0 lg:mr-4">
                                 <div className="font-bold">IP</div>
                                 <Input
-                                    defaultValue={"0.0.0.0"}
+                                    defaultValue={lifecycle?.startup_profile?.bindip || "0.0.0.0"}
                                     disabled={isDisabled}
                                     register={register('ip',{required: true, pattern: /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/})}
                                 />
@@ -188,7 +247,7 @@ const Controls = ({serverStatus}) => {
                                     type="number"
                                     min={1}
                                     max={65535}
-                                    defaultValue={"34197"}
+                                    defaultValue={lifecycle?.startup_profile?.port || "34197"}
                                     disabled={isDisabled}
                                     register={register('port',{required: true, min: 1, max: 65535})}
                                 />
@@ -203,7 +262,7 @@ const Controls = ({serverStatus}) => {
                                 <div className="relative">
                                     <Select
                                         register={register('save',{required: true})}
-                                        defaultValue={saves.find((save) => save.name.startsWith('Load Latest'))?.name}
+                                        defaultValue={lifecycle?.startup_profile?.savefile || saves.find((save) => save.name.startsWith('Load Latest'))?.name}
                                         disabled={isDisabled}
                                         options={saves.map(save => new Object({
                                             value: save.name,
@@ -226,6 +285,7 @@ const Controls = ({serverStatus}) => {
                         </>
                         : <Button isSubmit={true} isDisabled={isDisabled} isLoading={isStarting} size="sm" type="success" className="w-full md:w-auto">Start Server</Button>
                     }
+                    {startError && <div className="text-red ml-0 md:ml-4 mt-2 md:mt-0">{startError}</div>}
                 </div>
             }
         />
@@ -250,6 +310,20 @@ const Controls = ({serverStatus}) => {
                         <div className="lg:w-1/4 mb-2">
                             <div className="font-bold">Latest Experimental</div>
                             <div>{installStatus.latest || 'Unknown'}</div>
+                        </div>
+                    </div>
+                    <div className="lg:flex mt-2">
+                        <div className="lg:w-1/2 mb-2 mr-0 lg:mr-4">
+                            <div className="font-bold">Save Backups</div>
+                            <div>{backups.length} available</div>
+                        </div>
+                        <div className="lg:w-1/2 mb-2">
+                            <div className="font-bold">Version Safety</div>
+                            <div>
+                                {needsBackupBeforeInstall
+                                    ? "Create at least one save backup before changing Factorio versions."
+                                    : "Ready"}
+                            </div>
                         </div>
                     </div>
                     <div className="lg:flex mt-2">
@@ -315,7 +389,7 @@ const Controls = ({serverStatus}) => {
                     <Button
                         onClick={installFactorio}
                         isLoading={isInstalling || installStatus.installing}
-                        isDisabled={serverStatus.running || (installVersionMode === 'custom' && !customInstallVersion)}
+                        isDisabled={installDisabled}
                         size="sm"
                         type="success"
                         className="w-full md:w-auto mb-2 md:mb-0 md:mr-2"
@@ -324,7 +398,7 @@ const Controls = ({serverStatus}) => {
                         <Button
                             onClick={updateFactorio}
                             isLoading={isInstalling || installStatus.installing}
-                            isDisabled={serverStatus.running}
+                            isDisabled={serverStatus.running || needsBackupBeforeInstall}
                             size="sm"
                             type="default"
                             className="w-full md:w-auto"
@@ -333,6 +407,105 @@ const Controls = ({serverStatus}) => {
                 </div>
             }
         />
+        {lifecycle &&
+            <Panel
+                title="Server Lifecycle"
+                className="mt-6"
+                content={
+                    <div>
+                        <div className="lg:flex">
+                            <div className="lg:w-1/4 mb-2 mr-0 lg:mr-4">
+                                <div className="font-bold">Profile Save</div>
+                                <Select
+                                    value={lifecycle.startup_profile.savefile}
+                                    onChange={event => updateLifecycleField("startup_profile", "savefile", event.target.value)}
+                                    options={saves.map(save => ({value: save.name, name: save.name}))}
+                                />
+                            </div>
+                            <div className="lg:w-1/4 mb-2 mr-0 lg:mr-4">
+                                <div className="font-bold">Bind IP</div>
+                                <Input value={lifecycle.startup_profile.bindip || "0.0.0.0"}
+                                       onChange={event => updateLifecycleField("startup_profile", "bindip", event.target.value)}/>
+                            </div>
+                            <div className="lg:w-1/4 mb-2 mr-0 lg:mr-4">
+                                <div className="font-bold">Port</div>
+                                <Input type="number" min={1} max={65535}
+                                       value={lifecycle.startup_profile.port || 34197}
+                                       onChange={event => updateLifecycleField("startup_profile", "port", parseInt(event.target.value))}/>
+                            </div>
+                            <div className="lg:w-1/4 mb-2">
+                                <div className="font-bold">Mod Pack</div>
+                                <Input value={lifecycle.startup_profile.mod_pack || ""}
+                                       placeholder="optional"
+                                       onChange={event => updateLifecycleField("startup_profile", "mod_pack", event.target.value)}/>
+                            </div>
+                        </div>
+                        <div className="lg:flex mt-2">
+                            <div className="lg:w-1/4 mb-2 mr-0 lg:mr-4">
+                                <div className="font-bold">Public</div>
+                                <input type="checkbox"
+                                       checked={!!lifecycle.startup_profile.public}
+                                       onChange={event => updateLifecycleField("startup_profile", "public", event.target.checked)}/>
+                            </div>
+                            <div className="lg:w-1/4 mb-2 mr-0 lg:mr-4">
+                                <div className="font-bold">LAN</div>
+                                <input type="checkbox"
+                                       checked={!!lifecycle.startup_profile.lan}
+                                       onChange={event => updateLifecycleField("startup_profile", "lan", event.target.checked)}/>
+                            </div>
+                            <div className="lg:w-1/4 mb-2 mr-0 lg:mr-4">
+                                <div className="font-bold">Graceful Stop Timeout</div>
+                                <Input type="number" min={5}
+                                       value={lifecycle.graceful_stop_timeout}
+                                       onChange={event => updateLifecycleRoot("graceful_stop_timeout", parseInt(event.target.value))}/>
+                            </div>
+                            <div className="lg:w-1/4 mb-2">
+                                <div className="font-bold">Scheduled Restart</div>
+                                <input type="checkbox"
+                                       checked={!!lifecycle.restart_schedule.enabled}
+                                       onChange={event => updateLifecycleField("restart_schedule", "enabled", event.target.checked)}/>
+                            </div>
+                        </div>
+                        <div className="lg:flex mt-2">
+                            <div className="lg:w-1/4 mb-2 mr-0 lg:mr-4">
+                                <div className="font-bold">Restart Interval Hours</div>
+                                <Input type="number" min={1}
+                                       value={lifecycle.restart_schedule.interval_hours}
+                                       onChange={event => updateLifecycleField("restart_schedule", "interval_hours", parseInt(event.target.value))}/>
+                            </div>
+                            <div className="lg:w-1/4 mb-2 mr-0 lg:mr-4">
+                                <div className="font-bold">Next Restart</div>
+                                <div>{lifecycle.restart_schedule.next_restart || "Not scheduled"}</div>
+                            </div>
+                            <div className="lg:w-1/2 mb-2">
+                                <div className="font-bold">Last Crash</div>
+                                <div>{lifecycle.last_crash?.reason || "None"}</div>
+                            </div>
+                        </div>
+                        <div className="mt-2">
+                            <div className="font-bold">Recent Events</div>
+                            {(lifecycle.events || []).slice(0, 5).map((event, index) =>
+                                <div key={index} className="text-sm">
+                                    {new Date(event.time).toLocaleString()} [{event.type}] {event.message}
+                                </div>
+                            )}
+                            {(lifecycle.events || []).length === 0 && <div>None</div>}
+                        </div>
+                        {lifecycle.last_crash?.recent_logs?.length > 0 &&
+                            <div className="mt-2">
+                                <div className="font-bold">Recent Crash Logs</div>
+                                <pre className="text-xs whitespace-pre-wrap">{lifecycle.last_crash.recent_logs.join("\n")}</pre>
+                            </div>
+                        }
+                    </div>
+                }
+                actions={
+                    <Button size="sm" type="success" isLoading={isSavingLifecycle} onClick={saveLifecycle}>
+                        Save Lifecycle Settings
+                    </Button>
+                }
+            />
+        }
         </form>
     )
 };

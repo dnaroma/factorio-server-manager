@@ -13,6 +13,14 @@ export default {
         const response = await client.post('/api/server/install', {version});
         return response.data;
     },
+    lifecycle: async () => {
+        const response = await client.get('/api/server/lifecycle');
+        return response.data;
+    },
+    updateLifecycle: async (lifecycle) => {
+        const response = await client.post('/api/server/lifecycle', lifecycle);
+        return response.data;
+    },
     status: async () => {
         const response = await client.get('/api/server/status');
         return response.data;

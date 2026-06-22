@@ -3,6 +3,7 @@ package factorio
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/OpenFactorioServerManager/factorio-server-manager/bootstrap"
@@ -65,5 +66,60 @@ func TestValidateModPackNameRejectsUnsafeNames(t *testing.T) {
 				t.Fatalf("Expected invalid mod pack name: %q", name)
 			}
 		})
+	}
+}
+
+func TestVersionSemverStringUsesFirstThreeSegments(t *testing.T) {
+	version := Version{1, 1, 6, 4}
+	if actual := version.SemverString(); actual != "1.1.6" {
+		t.Fatalf("Expected semver string 1.1.6, got %s", actual)
+	}
+
+	if actual := SemverString("2.0.72.0"); actual != "2.0.72" {
+		t.Fatalf("Expected semver string 2.0.72, got %s", actual)
+	}
+}
+
+func TestRequiredDependencyNamesSkipsBuiltInMods(t *testing.T) {
+	dependencies := []string{
+		"base >= 2.0.0",
+		"space-age",
+		"quality >= 2.0.0",
+		"elevated-rails >= 2.0.0",
+		"required-mod >= 1.0.0",
+		"? optional-mod >= 1.0.0",
+	}
+
+	actual := requiredDependencyNames(dependencies)
+	expected := []string{"required-mod"}
+	if !reflect.DeepEqual(expected, actual) {
+		t.Fatalf("Expected required dependencies %v, got %v", expected, actual)
+	}
+}
+
+func TestValidateEnabledDependenciesSkipsBuiltInMods(t *testing.T) {
+	mods := Mods{
+		ModInfoList: ModInfoList{
+			Mods: []ModInfo{
+				{
+					Name: "test-mod",
+					Dependencies: []string{
+						"space-age",
+						"quality >= 2.0.0",
+						"elevated-rails >= 2.0.0",
+					},
+					Compatibility: true,
+				},
+			},
+		},
+		ModSimpleList: ModSimpleList{
+			Mods: []ModSimple{
+				{Name: "test-mod", Enabled: true},
+			},
+		},
+	}
+
+	if issues := mods.ValidateEnabledDependencies(); len(issues) > 0 {
+		t.Fatalf("Expected no dependency issues, got %v", issues)
 	}
 }

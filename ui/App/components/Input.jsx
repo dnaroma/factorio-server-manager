@@ -8,6 +8,8 @@ const Input = ({
                    hasAutoComplete = true,
                    onKeyDown = () => undefined,
                    onChange = undefined,
+                   onBlur = undefined,
+                   onFocus = undefined,
                    min = undefined,
                    max = undefined,
                    value = undefined,
@@ -21,6 +23,8 @@ const Input = ({
             type={type}
             onKeyDown={onKeyDown}
             {...(onChange ? {onChange} : {})}
+            {...(onBlur ? {onBlur} : {})}
+            {...(onFocus ? {onFocus} : {})}
             autoComplete={hasAutoComplete ? "on" : "off"}
             defaultValue={defaultValue}
             min={min}
