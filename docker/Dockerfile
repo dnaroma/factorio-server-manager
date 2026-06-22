@@ -9,7 +9,13 @@ VOLUME /opt/fsm-data /opt/factorio
 
 EXPOSE 80/tcp 34197/udp
 
-RUN apt-get update && apt-get install -y curl tar xz-utils unzip jq && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl tar xz-utils unzip jq \
+        2>/tmp/apt-install.err \
+        || { cat /tmp/apt-install.err >&2; exit 1; } \
+    && { grep -v "update-alternatives: warning: skip creation" /tmp/apt-install.err >&2 || true; } \
+    && rm -f /tmp/apt-install.err \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt
 
