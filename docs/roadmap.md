@@ -45,17 +45,17 @@ This roadmap focuses on features that make Factorio Server Manager more useful f
 - [x] Defer Factorio server download until requested from the UI.
 - [x] Add Factorio server install progress/status in the UI.
 - [x] Add controlled upgrade flow from the UI.
-- [ ] Require a save backup before upgrading or downgrading.
-- [ ] Check save and mod compatibility before starting after a version change.
-- [ ] Avoid re-downloading Factorio if the requested version is already installed.
+- [x] Require a save backup before upgrading or downgrading.
+- [x] Check save and mod compatibility before starting after a version change.
+- [x] Avoid re-downloading Factorio if the requested version is already installed.
 
 ### Server Lifecycle
 
-- [ ] Add startup profiles for save, bind address, port, mod pack, and common server settings.
-- [ ] Add scheduled restarts with warnings sent to chat before shutdown.
-- [ ] Add graceful shutdown timeout controls before falling back to kill.
-- [ ] Add server event history for starts, stops, crashes, updates, restores, and config changes.
-- [ ] Show crash reason and recent Factorio log lines when the server exits unexpectedly.
+- [x] Add startup profiles for save, bind address, port, mod pack, and common server settings.
+- [x] Add scheduled restarts with warnings sent to chat before shutdown.
+- [x] Add graceful shutdown timeout controls before falling back to kill.
+- [x] Add server event history for starts, stops, crashes, updates, restores, and config changes.
+- [x] Show crash reason and recent Factorio log lines when the server exits unexpectedly.
 
 ### Player Administration
 
@@ -120,7 +120,7 @@ This roadmap focuses on features that make Factorio Server Manager more useful f
 Before calling a release production-ready:
 
 - [ ] Save backup and restore are tested with real maps and mods.
-- [ ] Mod updates validate compatibility and dependencies before changes are applied.
-- [ ] Settings edits preserve unknown fields and warn about restart requirements.
-- [ ] Server lifecycle actions report clear success or failure states.
-- [ ] Destructive Factorio operations have confirmation, validation, and recovery paths.
+- [x] Mod updates validate compatibility and dependencies before changes are applied.
+- [x] Settings edits preserve unknown fields and warn about restart requirements.
+- [x] Server lifecycle actions report clear success or failure states.
+- [x] Destructive Factorio operations have confirmation, validation, and recovery paths.
