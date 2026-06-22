@@ -11,10 +11,10 @@ EXPOSE 80/tcp 34197/udp
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl tar xz-utils unzip jq \
-        2>/tmp/apt-install.err \
-        || { cat /tmp/apt-install.err >&2; exit 1; } \
-    && { grep -v "update-alternatives: warning: skip creation" /tmp/apt-install.err >&2 || true; } \
-    && rm -f /tmp/apt-install.err \
+        >/tmp/apt-install.log 2>&1 \
+        || { cat /tmp/apt-install.log; exit 1; } \
+    && { grep -v "update-alternatives: warning: skip creation" /tmp/apt-install.log || true; } \
+    && rm -f /tmp/apt-install.log \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt
