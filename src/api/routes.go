@@ -262,6 +262,12 @@ var apiRoutes = Routes{
 		FactorioVersion,
 		false,
 	}, {
+		"ServerInterfaces",
+		"GET",
+		"/server/interfaces",
+		ServerInterfaces,
+		false,
+	}, {
 		"FactorioInstallStatus",
 		"GET",
 		"/server/install",

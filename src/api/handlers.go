@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,6 +30,18 @@ type JSONResponseFileInput struct {
 	Data      interface{} `json:"data,string"`
 	Error     string      `json:"error"`
 	ErrorKeys []int       `json:"errorkeys"`
+}
+
+type NetworkInterfaceAddress struct {
+	IP      string `json:"ip"`
+	CIDR    string `json:"cidr"`
+	Version string `json:"version"`
+}
+
+type NetworkInterface struct {
+	Name        string                    `json:"name"`
+	DisplayName string                    `json:"display_name"`
+	Addresses   []NetworkInterfaceAddress `json:"addresses"`
 }
 
 func WriteResponse(w http.ResponseWriter, data interface{}) {
@@ -700,6 +713,67 @@ func FactorioVersion(w http.ResponseWriter, r *http.Request) {
 	var server = factorio.GetFactorioServer()
 	resp["version"] = server.Version.SemverString()
 	resp["base_mod_version"] = factorio.SemverString(server.BaseModVersion)
+}
+
+func ServerInterfaces(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+	interfaces := []NetworkInterface{{
+		Name:        "all",
+		DisplayName: "All interfaces",
+		Addresses: []NetworkInterfaceAddress{{
+			IP:      "0.0.0.0",
+			CIDR:    "0.0.0.0/0",
+			Version: "ipv4",
+		}},
+	}}
+
+	netInterfaces, err := net.Interfaces()
+	if err != nil {
+		resp = fmt.Sprintf("Error listing network interfaces: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	for _, netInterface := range netInterfaces {
+		if netInterface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := netInterface.Addrs()
+		if err != nil {
+			log.Printf("Error listing network interface %s addresses: %s", netInterface.Name, err)
+			continue
+		}
+
+		addresses := []NetworkInterfaceAddress{}
+		for _, addr := range addrs {
+			ip, ipNet, err := net.ParseCIDR(addr.String())
+			if err != nil || ip.To4() == nil {
+				continue
+			}
+			addresses = append(addresses, NetworkInterfaceAddress{
+				IP:      ip.String(),
+				CIDR:    ipNet.String(),
+				Version: "ipv4",
+			})
+		}
+
+		if len(addresses) == 0 {
+			continue
+		}
+		interfaces = append(interfaces, NetworkInterface{
+			Name:        netInterface.Name,
+			DisplayName: netInterface.Name,
+			Addresses:   addresses,
+		})
+	}
+
+	resp = interfaces
 }
 
 func FactorioInstallStatus(w http.ResponseWriter, r *http.Request) {
