@@ -1,7 +1,9 @@
 package api
 
 import (
+	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"io"
 	"log"
 	"mime/multipart"
@@ -19,6 +21,50 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type testModFixture struct {
+	Name            string
+	Version         string
+	Title           string
+	Author          string
+	FileName        string
+	FactorioVersion string
+}
+
+var testModFixtures = map[string]testModFixture{
+	"belt-balancer_3.0.0.zip": {
+		Name:            "belt-balancer",
+		Version:         "3.0.0",
+		Title:           "Belt Balancer",
+		Author:          "knoxfighter",
+		FileName:        "belt-balancer_3.0.0.zip",
+		FactorioVersion: "1.1",
+	},
+	"belt-balancer_2.1.3.zip": {
+		Name:            "belt-balancer",
+		Version:         "2.1.3",
+		Title:           "Belt Balancer",
+		Author:          "knoxfighter",
+		FileName:        "belt-balancer_2.1.3.zip",
+		FactorioVersion: "0.18",
+	},
+	"train-station-overview_3.0.0.zip": {
+		Name:            "train-station-overview",
+		Version:         "3.0.0",
+		Title:           "Train Station Overview",
+		Author:          "knoxfighter",
+		FileName:        "train-station-overview_3.0.0.zip",
+		FactorioVersion: "1.1",
+	},
+	"sonaxaton-infinite-resources_0.4.1.zip": {
+		Name:            "sonaxaton-infinite-resources",
+		Version:         "0.4.1",
+		Title:           "Infinite Resources",
+		Author:          "sonaxaton",
+		FileName:        "sonaxaton-infinite-resources_0.4.1.zip",
+		FactorioVersion: "0.17",
+	},
+}
 
 func TestMain(m *testing.M) {
 	var err error
@@ -45,23 +91,124 @@ func TestMain(m *testing.M) {
 		Version:        factorio.Version{1, 1, 6, 0},
 		BaseModVersion: "1.1.6",
 	})
+	portal := newTestModPortal()
+	factorio.SetModPortalBaseURL(portal.URL)
+	defer factorio.SetModPortalBaseURL("")
 
-	// check login status
-	var cred factorio.Credentials
-	load, err := cred.Load()
-	if err != nil {
-		log.Fatalf("Error loading factorio credentials: %s", err)
-		return
+	if err := ensureTestCredentials(); err != nil {
+		log.Fatalf("Error saving test factorio credentials: %s", err)
 	}
-	if !load {
-		// no credentials found, login...
-		err, _ = factorio.FactorioLogin(os.Getenv("factorio_username"), os.Getenv("factorio_password"))
-		if err != nil {
-			log.Printf("Error logging in into factorio: %s", err)
+
+	code := m.Run()
+	portal.Close()
+	os.Exit(code)
+}
+
+func ensureTestCredentials() error {
+	credentials := factorio.Credentials{Username: "test-user", Userkey: "test-token"}
+	return credentials.Save()
+}
+
+func newTestModPortal() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+		switch r.URL.Path {
+		case "/api/mods/belt-balancer":
+			WriteResponse(w, testModDetails("belt-balancer", "Belt Balancer", "knoxfighter", []testModFixture{
+				testModFixtures["belt-balancer_3.0.0.zip"],
+				testModFixtures["belt-balancer_2.1.3.zip"],
+			}))
+		case "/api/mods/train-station-overview":
+			WriteResponse(w, testModDetails("train-station-overview", "Train Station Overview", "knoxfighter", []testModFixture{
+				testModFixtures["train-station-overview_3.0.0.zip"],
+			}))
+		case "/api/mods/sonaxaton-infinite-resources":
+			WriteResponse(w, testModDetails("sonaxaton-infinite-resources", "Infinite Resources", "sonaxaton", []testModFixture{
+				testModFixtures["sonaxaton-infinite-resources_0.4.1.zip"],
+			}))
+		case "/api/mods/askdhcb":
+			http.Error(w, `{"message":"Mod not found"}`, http.StatusNotFound)
+		case "/download/belt-balancer/5fc1aca2bfe1b005c6943bf1":
+			writeTestModZip(w, testModFixtures["belt-balancer_3.0.0.zip"])
+		case "/download/belt-balancer/5e9f9db4bf9d30000c5303f2":
+			writeTestModZip(w, testModFixtures["belt-balancer_2.1.3.zip"])
+		case "/download/train-station-overview/5fc1b28cd3d1bb6fd86d9432":
+			writeTestModZip(w, testModFixtures["train-station-overview_3.0.0.zip"])
+		case "/download/sonaxaton-infinite-resources/5dca095d440570000be0de82":
+			writeTestModZip(w, testModFixtures["sonaxaton-infinite-resources_0.4.1.zip"])
+		default:
+			http.NotFound(w, r)
 		}
-	}
+	}))
+}
 
-	os.Exit(m.Run())
+func testModDetails(name, title, owner string, releases []testModFixture) map[string]interface{} {
+	releaseData := make([]map[string]interface{}, 0, len(releases))
+	for _, release := range releases {
+		releaseData = append(releaseData, map[string]interface{}{
+			"download_url": testDownloadURL(release.FileName),
+			"file_name":    release.FileName,
+			"info_json": map[string]interface{}{
+				"factorio_version": release.FactorioVersion,
+				"dependencies":     nil,
+			},
+			"released_at": "2020-01-01T00:00:00Z",
+			"sha1":        "test",
+			"version":     release.Version,
+		})
+	}
+	return map[string]interface{}{
+		"downloads_count": 1,
+		"name":            name,
+		"owner":           owner,
+		"releases":        releaseData,
+		"summary":         title,
+		"title":           title,
+	}
+}
+
+func testDownloadURL(fileName string) string {
+	switch fileName {
+	case "belt-balancer_3.0.0.zip":
+		return "/download/belt-balancer/5fc1aca2bfe1b005c6943bf1"
+	case "belt-balancer_2.1.3.zip":
+		return "/download/belt-balancer/5e9f9db4bf9d30000c5303f2"
+	case "train-station-overview_3.0.0.zip":
+		return "/download/train-station-overview/5fc1b28cd3d1bb6fd86d9432"
+	case "sonaxaton-infinite-resources_0.4.1.zip":
+		return "/download/sonaxaton-infinite-resources/5dca095d440570000be0de82"
+	default:
+		return ""
+	}
+}
+
+func writeTestModZip(w http.ResponseWriter, fixture testModFixture) {
+	w.Header().Set("Content-Type", "application/zip")
+	zipWriter := zip.NewWriter(w)
+	defer zipWriter.Close()
+	writeTestModInfo(zipWriter, fixture)
+}
+
+func writeTestModInfo(zipWriter *zip.Writer, fixture testModFixture) {
+	writer, err := zipWriter.Create(fixture.Name + "_" + fixture.Version + "/info.json")
+	if err != nil {
+		panic(err)
+	}
+	info := map[string]interface{}{
+		"name":             fixture.Name,
+		"version":          fixture.Version,
+		"title":            fixture.Title,
+		"author":           fixture.Author,
+		"factorio_version": fixture.FactorioVersion,
+	}
+	data, err := json.Marshal(info)
+	if err != nil {
+		panic(err)
+	}
+	_, err = writer.Write(data)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func testConfigFile() (string, error) {
@@ -96,6 +243,9 @@ func CheckShort(t *testing.T) {
 
 func SetupMods(t *testing.T, empty bool) {
 	var err error
+	if err = ensureTestCredentials(); err != nil {
+		t.Fatalf("Error saving test factorio credentials: %s", err)
+	}
 
 	config := bootstrap.GetConfig()
 
@@ -114,20 +264,43 @@ func SetupMods(t *testing.T, empty bool) {
 	}
 
 	if !empty {
-		err := mod.DownloadMod("/download/belt-balancer/5fc1aca2bfe1b005c6943bf1", "belt-balancer_3.0.0.zip", "belt-balancer")
-		if err != nil {
-			t.Fatalf(`Error downloading Mod "belt-balancer": %s`, err)
-		}
+		installTestMod(t, &mod, testModFixtures["belt-balancer_3.0.0.zip"])
+		installTestMod(t, &mod, testModFixtures["train-station-overview_3.0.0.zip"])
+	}
+}
 
-		err = mod.DownloadMod("/download/train-station-overview/5fc1b28cd3d1bb6fd86d9432", "train-station-overview_3.0.0.zip", "train-station-overview")
-		if err != nil {
-			t.Fatalf(`Error downloading Mod "train-station-overview": %s`, err)
-		}
+func installIncompatibleTestMod(t *testing.T, mods *factorio.Mods) {
+	t.Helper()
+	installTestMod(t, mods, testModFixtures["sonaxaton-infinite-resources_0.4.1.zip"])
+}
 
-		err = mod.DownloadMod("/download/sonaxaton-infinite-resources/5dca095d440570000be0de82", "sonaxaton-infinite-resources_0.4.1.zip", "sonaxaton-infinite-resources")
-		if err != nil {
-			t.Fatalf(`Error downloading Mod "sonaxaton-infinite-resources": %s`, err)
+func installTestMod(t *testing.T, mods *factorio.Mods, fixture testModFixture) {
+	t.Helper()
+	if err := mods.DownloadMod(testDownloadURL(fixture.FileName), fixture.FileName, fixture.Name); err != nil {
+		t.Fatalf(`Error installing test Mod "%s": %s`, fixture.Name, err)
+	}
+}
+
+func disableTestMod(t *testing.T, destination string, modName string) {
+	t.Helper()
+	mods, err := factorio.NewMods(destination)
+	if err != nil {
+		t.Fatalf("Error creating mods object: %s", err)
+	}
+	enabled := false
+	found := false
+	for _, mod := range mods.ModSimpleList.Mods {
+		if mod.Name == modName {
+			enabled = mod.Enabled
+			found = true
+			break
 		}
+	}
+	if !found || !enabled {
+		return
+	}
+	if err, _ := mods.ModSimpleList.ToggleMod(modName); err != nil {
+		t.Fatalf("Error disabling test mod %s: %s", modName, err)
 	}
 }
 
@@ -202,6 +375,9 @@ func TestListInstalledModsHandler(t *testing.T) {
 
 	SetupMods(t, false)
 	defer CleanupMods(t)
+	modList, err := factorio.NewMods(bootstrap.GetConfig().FactorioModsDir)
+	assert.NoError(t, err, "Error creating mods object")
+	installIncompatibleTestMod(t, &modList)
 
 	route := "/api/mods/list"
 
@@ -592,10 +768,7 @@ func Test_018_10_Compatibility(t *testing.T) {
 		t.Fatalf("couldn't create Mods object: %s", err)
 	}
 
-	err = mod.DownloadMod("/download/belt-balancer/5e9f9db4bf9d30000c5303f2", "belt-balancer_2.1.3.zip", "belt-balancer")
-	if err != nil {
-		t.Fatalf(`Error downloading Mod "belt-balancer": %s`, err)
-	}
+	installTestMod(t, &mod, testModFixtures["belt-balancer_2.1.3.zip"])
 
 	defer CleanupMods(t)
 

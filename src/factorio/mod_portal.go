@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+var modPortalBaseURL = "https://mods.factorio.com"
+
 type ModPortalStruct struct {
 	DownloadsCount int    `json:"downloads_count"`
 	Name           string `json:"name"`
@@ -32,7 +34,7 @@ type ModPortalStruct struct {
 
 // get all mods uploaded to the factorio modPortal
 func ModPortalList() (interface{}, error, int) {
-	req, err := http.NewRequest(http.MethodGet, "https://mods.factorio.com/api/mods?page_size=max", nil)
+	req, err := http.NewRequest(http.MethodGet, modPortalBaseURL+"/api/mods?page_size=max", nil)
 	if err != nil {
 		return "error", err, http.StatusInternalServerError
 	}
@@ -65,7 +67,7 @@ func ModPortalList() (interface{}, error, int) {
 func ModPortalModDetails(modId string) (ModPortalStruct, error, int) {
 	var mod ModPortalStruct
 
-	req, err := http.NewRequest(http.MethodGet, "https://mods.factorio.com/api/mods/"+modId, nil)
+	req, err := http.NewRequest(http.MethodGet, modPortalBaseURL+"/api/mods/"+modId, nil)
 	if err != nil {
 		return mod, err, http.StatusInternalServerError
 	}
@@ -146,6 +148,14 @@ func FactorioLogin(username string, password string) (error, int) {
 	}
 
 	return nil, http.StatusOK
+}
+
+func SetModPortalBaseURL(baseURL string) {
+	if strings.TrimSpace(baseURL) == "" {
+		modPortalBaseURL = "https://mods.factorio.com"
+		return
+	}
+	modPortalBaseURL = strings.TrimRight(baseURL, "/")
 }
 
 func FactorioApiKeyLogin(username string, apiKey string) (error, int) {

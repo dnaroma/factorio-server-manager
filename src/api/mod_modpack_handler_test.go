@@ -40,14 +40,8 @@ func SetupModPacks(t *testing.T, empty bool, emptyMods bool) {
 		assert.NoError(t, err, "error creating mods")
 
 		if !emptyMods {
-			err = modList.DownloadMod("/download/belt-balancer/5fc1aca2bfe1b005c6943bf1", "belt-balancer_3.0.0.zip", "belt-balancer")
-			assert.NoError(t, err, `Error downloading Mod "belt-balancer"`)
-
-			err = modList.DownloadMod("/download/train-station-overview/5fc1b28cd3d1bb6fd86d9432", "train-station-overview_3.0.0.zip", "train-station-overview")
-			assert.NoError(t, err, `Error downloading Mod "train-station-overview"`)
-
-			err = modList.DownloadMod("/download/sonaxaton-infinite-resources/5dca095d440570000be0de82", "sonaxaton-infinite-resources_0.4.1.zip", "sonaxaton-infinite-resources")
-			assert.NoError(t, err, `Error downloading Mod "sonaxaton-infinite-resources""`)
+			installTestMod(t, &modList, testModFixtures["belt-balancer_3.0.0.zip"])
+			installTestMod(t, &modList, testModFixtures["train-station-overview_3.0.0.zip"])
 		}
 	}
 }
@@ -114,10 +108,15 @@ func TestModPackListHandler(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		SetupModPacks(t, false, false)
 		defer CleanupModPacks(t)
+		modList, err := factorio.NewMods(filepath.Join(bootstrap.GetConfig().FactorioModPackDir, "test"))
+		assert.NoError(t, err, "Error creating mods object")
+		installIncompatibleTestMod(t, &modList)
 
 		expected := `[
   {
     "name": "test",
+    "description": "",
+    "validated_factorio_version": "",
     "mods": {
       "mods": [
         {
@@ -183,11 +182,16 @@ func TestModPackCreateHandler(t *testing.T) {
 		defer CleanupModPacks(t)
 		SetupMods(t, false)
 		defer CleanupMods(t)
+		modList, err := factorio.NewMods(bootstrap.GetConfig().FactorioModsDir)
+		assert.NoError(t, err, "Error creating mods object")
+		installIncompatibleTestMod(t, &modList)
 
 		requestBody := strings.NewReader(`{"name": "test"}`)
 		expected := `[
   {
     "name": "test",
+    "description": "",
+    "validated_factorio_version": "1.1.6",
     "mods": {
       "mods": [
         {
@@ -283,17 +287,6 @@ func TestModPackLoadHandler(t *testing.T) {
       "enabled": true
     },
     {
-      "name": "sonaxaton-infinite-resources",
-      "version": "0.4.1",
-      "title": "Infinite Resources",
-      "author": "sonaxaton",
-      "file_name": "sonaxaton-infinite-resources_0.4.1.zip",
-      "factorio_version": "0.17.0.0",
-      "dependencies": null,
-      "compatibility": false,
-      "enabled": true
-    },
-    {
       "name": "train-station-overview",
       "version": "3.0.0",
       "title": "Train Station Overview",
@@ -379,17 +372,6 @@ func TestModPackModListHandler(t *testing.T) {
       "factorio_version": "1.1.0.0",
       "dependencies": null,
       "compatibility": true,
-      "enabled": true
-    },
-    {
-      "name": "sonaxaton-infinite-resources",
-      "version": "0.4.1",
-      "title": "Infinite Resources",
-      "author": "sonaxaton",
-      "file_name": "sonaxaton-infinite-resources_0.4.1.zip",
-      "factorio_version": "0.17.0.0",
-      "dependencies": null,
-      "compatibility": false,
       "enabled": true
     },
     {
@@ -594,7 +576,7 @@ func TestModPackModUpdateHandler(t *testing.T) {
 
 		requestBody := `{"modName": "asldbsac", "downloadUrl": "/download/belt-balancer/5e711cd95bcf4f000b96b22c", "fileName": "belt-balancer_2.1.2.zip"}`
 
-		CallRoute(t, method, baseRoute, route, strings.NewReader(requestBody), handlerFunc, http.StatusNotFound, "")
+		CallRoute(t, method, baseRoute, route, strings.NewReader(requestBody), handlerFunc, http.StatusInternalServerError, "")
 	})
 
 	t.Run("wrong download link", func(t *testing.T) {

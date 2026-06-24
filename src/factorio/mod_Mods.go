@@ -317,7 +317,7 @@ func (mods *Mods) DownloadMod(url string, filename string, modId string) error {
 	}
 
 	//download the mod from the mod portal api
-	completeUrl := "https://mods.factorio.com" + url + "?username=" + credentials.Username + "&token=" + credentials.Userkey
+	completeUrl := modPortalBaseURL + url + "?username=" + credentials.Username + "&token=" + credentials.Userkey
 
 	response, err := http.Get(completeUrl)
 	if err != nil {
