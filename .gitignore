@@ -1,4 +1,5 @@
 node_modules/
+.omo/run-continuation/
 .pnpm-store/
 dev/
 dev_packs/
