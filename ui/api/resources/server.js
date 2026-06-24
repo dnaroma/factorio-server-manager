@@ -5,6 +5,10 @@ export default {
         const response = await client.get('/api/server/facVersion');
         return response.data;
     },
+    interfaces: async () => {
+        const response = await client.get('/api/server/interfaces');
+        return response.data;
+    },
     installStatus: async () => {
         const response = await client.get('/api/server/install');
         return response.data;

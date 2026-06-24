@@ -38,6 +38,7 @@ const Controls = ({serverStatus}) => {
     const [installError, setInstallError] = useState('');
     const [startError, setStartError] = useState('');
     const [lifecycle, setLifecycle] = useState(null);
+    const [interfaces, setInterfaces] = useState([]);
     const [isSavingLifecycle, setIsSavingLifecycle] = useState(false);
 
     const { handleSubmit, reset, register, formState: {errors} } = useForm();
@@ -106,12 +107,19 @@ const Controls = ({serverStatus}) => {
     }
 
     useEffect(() => {
-        Promise.all([server.installStatus(), savesResource.list(true), savesResource.backups(), server.lifecycle()])
-            .then(([status, saveRes, backupRes, lifecycleRes]) => {
+        Promise.all([
+            server.installStatus(),
+            savesResource.list(true),
+            savesResource.backups(),
+            server.lifecycle(),
+            server.interfaces().catch(() => []),
+        ])
+            .then(([status, saveRes, backupRes, lifecycleRes, interfaceRes]) => {
                 setInstallStatus(status);
                 setSaves(saveRes);
                 setBackups(backupRes);
                 setLifecycle(lifecycleRes);
+                setInterfaces(interfaceRes);
                 if (status.installed && saveRes.length > 0) {
                     setIsDisabled(undefined);
                 } else {
@@ -185,6 +193,12 @@ const Controls = ({serverStatus}) => {
             [field]: value
         }));
     };
+    const interfaceAddressOptions = interfaces.flatMap(networkInterface =>
+        (networkInterface.addresses || []).map(address => ({
+            value: address.ip,
+            label: `${networkInterface.display_name || networkInterface.name} - ${address.ip}`
+        }))
+    );
     const saveLifecycle = async () => {
         setIsSavingLifecycle(true);
         try {
@@ -237,6 +251,7 @@ const Controls = ({serverStatus}) => {
                                 <Input
                                     defaultValue={lifecycle?.startup_profile?.bindip || "0.0.0.0"}
                                     disabled={isDisabled}
+                                    list="server-bind-ip-options"
                                     register={register('ip',{required: true, pattern: /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/})}
                                 />
                                 <Error error={errors.ip} message="IP is required and must be valid."/>
@@ -289,6 +304,11 @@ const Controls = ({serverStatus}) => {
                 </div>
             }
         />
+        <datalist id="server-bind-ip-options">
+            {interfaceAddressOptions.map(option =>
+                <option value={option.value} label={option.label} key={`${option.label}-${option.value}`}/>
+            )}
+        </datalist>
         <Panel
             title="Factorio Server Installation"
             className="mt-6"
@@ -425,6 +445,7 @@ const Controls = ({serverStatus}) => {
                             <div className="lg:w-1/4 mb-2 mr-0 lg:mr-4">
                                 <div className="font-bold">Bind IP</div>
                                 <Input value={lifecycle.startup_profile.bindip || "0.0.0.0"}
+                                       list="server-bind-ip-options"
                                        onChange={event => updateLifecycleField("startup_profile", "bindip", event.target.value)}/>
                             </div>
                             <div className="lg:w-1/4 mb-2 mr-0 lg:mr-4">
