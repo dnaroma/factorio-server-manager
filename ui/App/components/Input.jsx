@@ -10,6 +10,7 @@ const Input = ({
                    onChange = undefined,
                    onBlur = undefined,
                    onFocus = undefined,
+                   list = undefined,
                    min = undefined,
                    max = undefined,
                    value = undefined,
@@ -26,6 +27,7 @@ const Input = ({
             {...(onBlur ? {onBlur} : {})}
             {...(onFocus ? {onFocus} : {})}
             autoComplete={hasAutoComplete ? "on" : "off"}
+            list={list}
             defaultValue={defaultValue}
             min={min}
             max={max}
