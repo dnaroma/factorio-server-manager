@@ -96,11 +96,10 @@ func ModPortalModDetails(modId string) (ModPortalStruct, error, int) {
 
 	installedBaseVersion := Version{}
 	_ = installedBaseVersion.UnmarshalText([]byte(server.BaseModVersion))
-	requiredVersion := NilVersion
 
 	for key, release := range mod.Releases {
-		requiredVersion = release.InfoJSON.FactorioVersion
-		release.Compatibility = installedBaseVersion.Compatible(requiredVersion, ">=")
+		factorioVersion := release.InfoJSON.FactorioVersion
+		release.Compatibility = isCompatibleWithRange(installedBaseVersion, factorioVersion, release.InfoJSON.Dependencies)
 		mod.Releases[key] = release
 	}
 

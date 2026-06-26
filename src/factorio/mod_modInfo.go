@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/OpenFactorioServerManager/factorio-server-manager/lockfile"
 )
@@ -76,46 +75,9 @@ func (modInfoList *ModInfoList) listInstalledMods() error {
 
 			modInfo.FileName = info.Name()
 
-			var base Version
-			var op string
-			for _, dep := range modInfo.Dependencies {
-				dep = strings.TrimSpace(dep)
-				if dep == "" {
-					continue
-				}
-
-				// skip optional and incompatible dependencies
-				parts := strings.Split(dep, " ")
-				if len(parts) > 3 {
-					log.Printf("skipping dependency '%s' in '%s': optional dependency or invalid format\n", dep, modInfo.Name)
-					continue
-				}
-				if parts[0] != "base" {
-					continue
-				}
-				if len(parts) == 1 {
-					base = modInfo.FactorioVersion
-					op = ">="
-					continue
-				}
-
-				op = parts[1]
-
-				if err := base.UnmarshalText([]byte(parts[2])); err != nil {
-					log.Printf("skipping dependency '%s' in '%s': %v\n", dep, modInfo.Name, err)
-					continue
-				}
-
-				break
-			}
-
 			server := GetFactorioServer()
 
-			// check both the factorio-version and the base mod dependency
-			modInfo.Compatibility = server.Version.GEC(modInfo.FactorioVersion)
-			if modInfo.Compatibility && !base.Equals(NilVersion) {
-				modInfo.Compatibility = server.Version.Compatible(base, op)
-			}
+			modInfo.Compatibility = isCompatibleWithRange(server.Version, modInfo.FactorioVersion, modInfo.Dependencies)
 
 			modInfoList.Mods = append(modInfoList.Mods, modInfo)
 		}
