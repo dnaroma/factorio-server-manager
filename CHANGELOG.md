@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.5] - 2026-06-27
+### Fixed
+- "Update all mods" no longer causes mods to disappear with "mod file for X doesn't exist" error
+- Backend `createMod` now writes the new zip before removing the old one, so a failed download no longer deletes the existing mod
+- Frontend mod updates are now sent sequentially instead of in parallel, preventing concurrent file-system races
+- `listInstalledMods` no longer panics on nil FileInfo when mod files are deleted concurrently during a directory walk
+- Portal metadata is now fetched even when Factorio is not installed (`base_mod_version` empty)
+
 ## [0.2.4] - 2026-06-26
 ### Changed
 - Simplified mods list: only two groups (Update available / Current) instead of 3-way compatible/incompatible/unknown
