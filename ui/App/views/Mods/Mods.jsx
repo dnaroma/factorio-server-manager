@@ -171,12 +171,20 @@ const Mods = ({serverStatus}) => {
         .filter(Boolean);
     const selectedUpdatePayloads = compatibleUpdates.filter(update => selectedUpdates[update.modName]);
 
-    const updateMods = updates => {
+    const updateMods = async updates => {
         setIsUpdatingMods(true);
 
-        Promise.all(updates.map(update => modsResource.update(update)))
-            .then(fetchInstalledMods)
-            .finally(() => setIsUpdatingMods(false));
+        // Sequential: each update deletes the old zip then writes the new one
+        // on the same disk directory. Parallel requests would race on file state.
+        for (const update of updates) {
+            try {
+                await modsResource.update(update);
+            } catch (e) {
+                console.error(`Failed to update mod ${update.modName}:`, e);
+            }
+        }
+        fetchInstalledMods();
+        setIsUpdatingMods(false);
     }
 
     const updateAllMods = () => {
@@ -223,7 +231,7 @@ const Mods = ({serverStatus}) => {
     }, []);
 
     useEffect(() => {
-        if (!factorioVersion || installedMods.length === 0) {
+        if (factorioVersion === null || installedMods.length === 0) {
             return;
         }
 
