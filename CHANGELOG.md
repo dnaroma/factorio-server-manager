@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.4] - 2026-06-26
+### Changed
+- Simplified mods list: only two groups (Update available / Current) instead of 3-way compatible/incompatible/unknown
+- Latest column now shows the compatible latest release version (3-segment mod version format)
+- Factorio Version column shows major.minor only (e.g. `2.0` instead of `2.0.0`)
+- Removed Compatibility column, Portal Factorio column, and Mod update status panel
+- Hidden Dependencies column (TODO: requires full portal endpoint for complete data)
+- Incompatible latest version shown as gray hint: "Latest requires Factorio X.Y"
+- Update arrow button shows tooltip with target version
+
 ## [0.2.3] - 2026-06-26
 ### Fixed
 - Mod version compatibility now requires exact major.minor match (patch version ignored). Previously, mods tagged for Factorio 2.1 were incorrectly shown as compatible with Factorio 2.0, and vice versa.
