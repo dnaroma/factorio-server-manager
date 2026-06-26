@@ -79,10 +79,14 @@ func (v Version) Less(b Version) bool {
 // Greater returns true if the receiver version is greater than the argument version
 func (v Version) Greater(b Version) bool { return !v.Equals(b) && !v.Less(b) }
 
-// GreaterC called to determine the compatibility with a greater version
-// Versions, that have different super/major version are not compatible!
+// GreaterC called to determine the compatibility with a greater version.
+// For major > 0: same major.minor = compatible (patch/build ignored).
+// Special case: 1.0 is compatible with 0.18.
 func (v *Version) GreaterC(b Version) bool {
-	return (v[0] == b[0] && v[1] == b[1] && (v[2] > b[2] || (v[2] == b[2] && v[3] > b[3]))) || (v[0] == 1 && b[0] == 0 && v[1] == 0 && b[1] == 18)
+	if v[0] == b[0] && v[1] == b[1] && v[0] > 0 {
+		return true
+	}
+	return (v[0] == 1 && b[0] == 0 && v[1] == 0 && b[1] == 18)
 }
 
 // check greater equal of versions
@@ -113,6 +117,48 @@ func (v Version) Compatible(b Version, op string) bool {
 	default:
 		panic("unsupported operator")
 	}
+}
+
+// isCompatibleWithRange checks if the installed version is compatible with a mod.
+// The mod's factorio_version requires exact major.minor match (patch ignored).
+// The lower bound comes from the "base" dependency in dependencies.
+func isCompatibleWithRange(installed Version, factorioVersion Version, dependencies []string) bool {
+	bridge1018 := installed[0] == 1 && factorioVersion[0] == 0 && installed[1] == 0 && factorioVersion[1] == 18
+
+	if !bridge1018 && (installed[0] != factorioVersion[0] || installed[1] != factorioVersion[1]) {
+		return false
+	}
+
+	lowerBound := NilVersion
+	op := ">="
+	for _, dep := range dependencies {
+		dep = strings.TrimSpace(dep)
+		if dep == "" {
+			continue
+		}
+		parts := strings.Split(dep, " ")
+		if len(parts) > 3 {
+			continue
+		}
+		if parts[0] != "base" {
+			continue
+		}
+		if len(parts) == 1 {
+			continue
+		}
+		op = parts[1]
+		if len(parts) >= 3 {
+			if err := lowerBound.UnmarshalText([]byte(parts[2])); err != nil {
+				continue
+			}
+		}
+		break
+	}
+
+	if !lowerBound.Equals(NilVersion) {
+		return installed.Compatible(lowerBound, op)
+	}
+	return true
 }
 
 // version24 is the 24-bit (8, 8, 8) version structure
