@@ -10,6 +10,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -267,30 +268,31 @@ func requiredDependencyName(dependency string) (string, bool) {
 func (mods *Mods) createMod(modName string, fileName string, fileRc io.Reader) error {
 	var err error
 
-	//check if mod already exists and delete it
-	if mods.ModSimpleList.CheckModExists(modName) {
-		err = mods.ModInfoList.deleteMod(modName)
-		if err != nil {
-			log.Printf("error when deleting mod: %s", err)
-			return err
+	var oldFileName string
+	for _, mod := range mods.ModInfoList.Mods {
+		if mod.Name == modName {
+			oldFileName = mod.FileName
+			break
 		}
 	}
 
-	//create new mod
 	err = mods.ModInfoList.createMod(modName, fileName, fileRc)
 	if err != nil {
 		log.Printf("error on creating mod-file: %s", err)
-
-		// removing mod completely
-		err2 := mods.ModSimpleList.deleteMod(modName)
-		if err2 != nil {
-			log.Printf("error deleting mod from modSimpleList: %s", err2)
-		}
-
 		return err
 	}
 
-	// also add to ModSimpleList if not there yet
+	if oldFileName != "" && oldFileName != fileName {
+		oldPath := filepath.Join(mods.ModInfoList.Destination, oldFileName)
+		FileLock.LockW(oldPath)
+		err = os.Remove(oldPath)
+		FileLock.Unlock(oldPath)
+		if err != nil && !os.IsNotExist(err) {
+			log.Printf("error removing old mod file %s: %s", oldPath, err)
+		}
+		mods.ModInfoList.listInstalledMods()
+	}
+
 	if !mods.ModSimpleList.CheckModExists(modName) {
 		err = mods.ModSimpleList.createMod(modName)
 		if err != nil {

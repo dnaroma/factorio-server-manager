@@ -48,6 +48,9 @@ func (modInfoList *ModInfoList) listInstalledMods() error {
 	modInfoList.Mods = nil
 
 	err = filepath.Walk(modInfoList.Destination, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
 		if !info.IsDir() && filepath.Ext(path) == ".zip" {
 
 			err = FileLock.RLock(path)
