@@ -53,11 +53,16 @@ const isReleaseCompatible = (release, factorioVersion) => {
         return false;
     }
 
-    return satisfies(installedFactorioVersion.version, "~" + requiredFactorioVersion.version) ||
-        (
-            satisfies(installedFactorioVersion.version, "1.0.0") &&
-            satisfies(requiredFactorioVersion, "0.18.x")
-        );
+    // factorio_version requires exact major.minor match (patch ignored)
+    if (installedFactorioVersion.major === requiredFactorioVersion.major &&
+        installedFactorioVersion.minor === requiredFactorioVersion.minor &&
+        installedFactorioVersion.major > 0) {
+        return true;
+    }
+
+    // Special case: Factorio 1.0 is compatible with mods tagged 0.18
+    return satisfies(installedFactorioVersion.version, "1.0.0") &&
+        satisfies(requiredFactorioVersion, "0.18.x");
 };
 
 const releaseTimestamp = release => Date.parse(release.released_at || "") || 0;

@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.3] - 2026-06-26
+### Fixed
+- Mod version compatibility now requires exact major.minor match (patch version ignored). Previously, mods tagged for Factorio 2.1 were incorrectly shown as compatible with Factorio 2.0, and vice versa.
+- Centralized compatibility logic into `isCompatibleWithRange()`, used by both portal and installed-mod checks.
+- Preserved the `1.0↔0.18` special-case bridge.
+- Frontend `isReleaseCompatible()` now matches backend logic.
+
 ## [0.11.0] - TBD
 ### Changed
 - Configuration environment variables are now uppercase and prefixed with FSM
