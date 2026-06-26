@@ -2,8 +2,7 @@ import Mod from "./Mod";
 import React from "react";
 
 const groupLabels = {
-    compatible: "Compatible updates",
-    incompatible: "Incompatible updates",
+    "update-available": "Update available",
     unknown: "Unknown update status",
     current: "Current",
 };
@@ -22,9 +21,12 @@ const ModList = ({
     const groupedMods = mods.reduce((groups, mod) => {
         const status = metadataByMod[mod.name]?.status || "unknown";
         const group = groupLabels[status] ? status : "unknown";
+        groups[group] = groups[group] || [];
         groups[group].push(mod);
         return groups;
-    }, {compatible: [], incompatible: [], unknown: [], current: []});
+    }, {});
+
+    const groupOrder = ["update-available", "unknown", "current"];
 
     return (
         <table className="w-full">
@@ -33,23 +35,21 @@ const ModList = ({
                 {!disabled && <th/>}
                 <th>Name</th>
                 <th>Enabled</th>
-                <th>Compatibility</th>
                 <th>Mod Version</th>
                 <th>Latest</th>
                 <th>Released</th>
                 <th>Factorio Version</th>
-                <th>Portal Factorio</th>
-                <th>Dependencies</th>
+                {/* TODO: Show Dependencies column once full portal endpoint is fetched (provides complete dependency list) */}
                 <th>Portal</th>
                 {!disabled && <th/>}
             </tr>
             </thead>
             <tbody>
             {
-                factorioVersion !== null && Object.keys(groupedMods).map(group =>
-                    groupedMods[group].length > 0 && <React.Fragment key={group}>
+                factorioVersion !== null && groupOrder.map(group =>
+                    groupedMods[group]?.length > 0 && <React.Fragment key={group}>
                         <tr>
-                            <td colSpan={disabled ? 10 : 12} className="pt-4 pb-1 text-orange font-bold">
+                            <td colSpan={disabled ? 7 : 9} className="pt-4 pb-1 text-orange font-bold">
                                 {groupLabels[group]}
                             </td>
                         </tr>

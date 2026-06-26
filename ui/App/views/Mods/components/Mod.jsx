@@ -9,17 +9,9 @@ import {
     faTrashAlt
 } from "@fortawesome/free-solid-svg-icons";
 import React, {useState} from "react";
-import {formatFactorioVersion} from "../../../utils/version";
+import {formatFactorioVersionShort} from "../../../utils/version";
 
 const formatDate = value => value ? new Date(value).toLocaleDateString() : "Unknown";
-
-const dependencyText = dependencies => {
-    if (!dependencies || dependencies.length === 0) {
-        return "None";
-    }
-
-    return dependencies.slice(0, 3).join(", ") + (dependencies.length > 3 ? ` +${dependencies.length - 3}` : "");
-};
 
 const Mod = ({
                  mod,
@@ -69,12 +61,6 @@ const Mod = ({
                 }
             </td>
             <td className="pr-4">
-                {mod.compatibility
-                    ? <FontAwesomeIcon className="text-green" icon={faCheck}/>
-                    : <FontAwesomeIcon className="text-red" icon={faTimes}/>
-                }
-            </td>
-            <td className="pr-4">
                 {mod.version}
                 {!disabled && newVersion && <FontAwesomeIcon spin={icon === faSpinner}
                                                 onClick={() => {
@@ -83,18 +69,18 @@ const Mod = ({
                                                         .finally(() => setIcon(faArrowCircleUp))
                                                 }}
                                                 className="hover:text-orange cursor-pointer ml-1"
-                                                icon={icon}/>}</td>
+                                                icon={icon}
+                                                title={`Update to ${metadata?.latestVersion}`}/>}</td>
             <td className="pr-4">{metadata?.latestVersion || "Unknown"}</td>
             <td className="pr-4">{formatDate(metadata?.latestReleasedAt)}</td>
-            <td className="pr-4">{formatFactorioVersion(mod.factorio_version)}</td>
-            <td className="pr-4">{metadata?.factorioVersion || "Unknown"}</td>
-            <td className="pr-4" title={metadata?.dependencies?.join(", ") || ""}>{dependencyText(metadata?.dependencies)}</td>
+            <td className="pr-4">{formatFactorioVersionShort(mod.factorio_version)}</td>
+            {/* TODO: Show Dependencies column once full portal endpoint is fetched (provides complete dependency list) */}
             <td className="pr-4">
                 {metadata?.changelogUrl
                     ? <a className="text-orange hover:text-orange-light" href={metadata.changelogUrl} target="_blank" rel="noreferrer">Changelog</a>
                     : "Unknown"
                 }
-                {metadata?.reason && <div className="text-xs text-red">{metadata.reason}</div>}
+                {metadata?.reason && <div className="text-xs text-gray">{metadata.reason}</div>}
             </td>
             {
                 !disabled &&

@@ -14,7 +14,7 @@ import ModPack from "./components/ModPack";
 import ModList from "./components/ModList";
 import ImportModPack from "./components/ImportModPack";
 import {coerce, gt, satisfies} from "semver";
-import {formatFactorioVersion} from "../../utils/version";
+import {formatFactorioVersion, formatFactorioVersionShort, formatModVersion} from "../../utils/version";
 
 const releaseVersion = release => coerce(release.version);
 const modVersion = mod => coerce(mod.version);
@@ -97,9 +97,6 @@ const buildModMetadata = (mod, portalInfo, factorioVersion) => {
     const currentVersion = modVersion(mod);
     const latestVersion = latestRelease ? releaseVersion(latestRelease) : null;
     const latestCompatibleVersion = latestCompatibleRelease ? releaseVersion(latestCompatibleRelease) : null;
-    const dependencies = requiredDependencyNames(
-        latestCompatibleRelease?.info_json?.dependencies || latestRelease?.info_json?.dependencies || mod.dependencies
-    );
 
     let update = null;
     let status = "current";
@@ -109,18 +106,18 @@ const buildModMetadata = (mod, portalInfo, factorioVersion) => {
         status = "unknown";
         reason = "No release metadata available";
     } else if (latestCompatibleRelease && latestCompatibleVersion && gt(latestCompatibleVersion, currentVersion)) {
-        status = "compatible";
+        status = "update-available";
         update = {
             downloadUrl: latestCompatibleRelease.download_url,
             fileName: latestCompatibleRelease.file_name,
             modName: mod.name,
         };
     } else if (gt(latestVersion, currentVersion)) {
-        status = "incompatible";
-        reason = `Latest release requires Factorio ${formatFactorioVersion(latestRelease.info_json.factorio_version)}`;
+        status = "current";
+        reason = `Latest requires Factorio ${formatFactorioVersionShort(latestRelease.info_json.factorio_version)}`;
     } else if (!mod.compatibility) {
-        status = "incompatible";
-        reason = `Installed mod targets Factorio ${formatFactorioVersion(mod.factorio_version)}`;
+        status = "current";
+        reason = `Targets Factorio ${formatFactorioVersionShort(mod.factorio_version)}`;
     }
 
     return {
@@ -128,10 +125,9 @@ const buildModMetadata = (mod, portalInfo, factorioVersion) => {
         reason,
         latestRelease,
         latestCompatibleRelease,
-        latestVersion: latestRelease?.version,
-        latestReleasedAt: latestRelease?.released_at,
-        factorioVersion: formatFactorioVersion(latestRelease?.info_json?.factorio_version),
-        dependencies,
+        latestVersion: formatModVersion(latestCompatibleRelease?.version || latestRelease?.version),
+        latestReleasedAt: (latestCompatibleRelease || latestRelease)?.released_at,
+        factorioVersion: formatFactorioVersionShort((latestCompatibleRelease || latestRelease)?.info_json?.factorio_version),
         update,
         changelogUrl: `https://mods.factorio.com/mod/${mod.name}/changelog`,
     };
@@ -170,15 +166,7 @@ const Mods = ({serverStatus}) => {
         return metadata;
     }, {});
 
-    const updatesByGroup = installedMods.reduce((groups, mod) => {
-        const metadata = metadataByMod[mod.name];
-        if (metadata?.status && metadata.status !== "current") {
-            groups[metadata.status].push(mod);
-        }
-        return groups;
-    }, {compatible: [], incompatible: [], unknown: []});
-
-    const compatibleUpdates = updatesByGroup.compatible
+    const compatibleUpdates = installedMods
         .map(mod => metadataByMod[mod.name]?.update)
         .filter(Boolean);
     const selectedUpdatePayloads = compatibleUpdates.filter(update => selectedUpdates[update.modName]);
@@ -347,32 +335,6 @@ const Mods = ({serverStatus}) => {
                         <a className="bg-gray-light py-1 px-2 hover:glow-orange hover:bg-orange inline-block accentuated text-black font-bold"
                            href={modsResource.downloadAllURL}>Download all Mods</a>
                     </>
-                }
-            />
-            <Panel
-                title="Mod update status"
-                className="mb-6"
-                content={
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <h3 className="text-green font-bold mb-2">Compatible updates</h3>
-                            {updatesByGroup.compatible.length === 0 ? "None" : updatesByGroup.compatible.map(mod =>
-                                <div key={mod.name}>{mod.title} {mod.version} → {metadataByMod[mod.name].latestCompatibleRelease.version}</div>
-                            )}
-                        </div>
-                        <div>
-                            <h3 className="text-red font-bold mb-2">Incompatible updates</h3>
-                            {updatesByGroup.incompatible.length === 0 ? "None" : updatesByGroup.incompatible.map(mod =>
-                                <div key={mod.name}>{mod.title}: {metadataByMod[mod.name].reason}</div>
-                            )}
-                        </div>
-                        <div>
-                            <h3 className="text-orange font-bold mb-2">Unknown</h3>
-                            {updatesByGroup.unknown.length === 0 ? "None" : updatesByGroup.unknown.map(mod =>
-                                <div key={mod.name}>{mod.title}: {metadataByMod[mod.name].reason}</div>
-                            )}
-                        </div>
-                    </div>
                 }
             />
 
