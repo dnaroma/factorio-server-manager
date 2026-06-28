@@ -224,7 +224,7 @@ var apiRoutes = Routes{
 		"POST",
 		"/saves/fresh-restart/{save}",
 		FreshRestartSave,
-		true,
+		false,
 	}, {
 		"LogTail",
 		"GET",
