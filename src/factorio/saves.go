@@ -494,28 +494,46 @@ func buildCreateSaveArgs(filePath string, mapGenSettingsFile string, mapSettings
 	return args
 }
 
+// sendRconCommand sends a Lua command via RCON twice. Factorio 2.0 requires
+// the player to confirm console commands that disable achievements: the first
+// invocation shows the achievement-warning prompt and the second actually
+// executes the command. RCON connections count as player "<server>" so this
+// gate applies even to headless servers.
+func sendRconCommand(server *Server, command string) (reqId int, err error) {
+	// confirm
+	reqId, err = server.Rcon.Write(command)
+	if err != nil {
+		return reqId, fmt.Errorf("error sending RCON command (confirm): %v", err)
+	}
+	log.Printf("RCON command sent (confirm), request id: %v", reqId)
+
+	time.Sleep(500 * time.Millisecond)
+
+	// execute
+	reqId, err = server.Rcon.Write(command)
+	if err != nil {
+		return reqId, fmt.Errorf("error sending RCON command (execute): %v", err)
+	}
+	log.Printf("RCON command sent (execute), request id: %v", reqId)
+	return reqId, nil
+}
+
 func ExtractMapGenSettings(server *Server) (mapGenSettingsPath string, mapSettingsPath string, err error) {
 	if server.Rcon == nil {
 		return "", "", ErrRCONNotConnected
 	}
 
 	writeExchangeStringCommand := "/silent-command helpers.write_file('fsm-exchange-string.txt', game.get_map_exchange_string())"
-	reqId, err := server.Rcon.Write(writeExchangeStringCommand)
-	if err != nil {
-		log.Printf("Error sending rcon command: %s", err)
-		return "", "", fmt.Errorf("error sending RCON command: %v", err)
+	if _, err = sendRconCommand(server, writeExchangeStringCommand); err != nil {
+		return "", "", err
 	}
-	log.Printf("RCON command sent, request id: %v", reqId)
 
 	time.Sleep(1 * time.Second)
 
 	writeSettingsCommand := "/silent-command local s = helpers.read_file('fsm-exchange-string.txt') local d = helpers.parse_map_exchange_string(s) helpers.write_file('fsm-map-gen-settings.json', helpers.table_to_json(d.map_gen_settings)) helpers.write_file('fsm-map-settings.json', helpers.table_to_json(d.map_settings))"
-	reqId, err = server.Rcon.Write(writeSettingsCommand)
-	if err != nil {
-		log.Printf("Error sending rcon command: %s", err)
-		return "", "", fmt.Errorf("error sending RCON command: %v", err)
+	if _, err = sendRconCommand(server, writeSettingsCommand); err != nil {
+		return "", "", err
 	}
-	log.Printf("RCON command sent, request id: %v", reqId)
 
 	time.Sleep(2 * time.Second)
 
