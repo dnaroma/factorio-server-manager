@@ -11,6 +11,7 @@ import {
     faList,
     faPen,
     faRotateLeft,
+    faRotateRight,
     faSave,
     faTrashAlt
 } from "@fortawesome/free-solid-svg-icons";
@@ -20,6 +21,7 @@ import Modal from "../../components/Modal";
 import Input from "../../components/Input";
 import Label from "../../components/Label";
 import {formatFactorioVersion} from "../../utils/version";
+import FreshRestartConfirmDialog from "./components/FreshRestartConfirmDialog";
 
 const formatSize = size => `${parseFloat(size / 1024 / 1024).toFixed(3)} MB`;
 const formatDate = value => value ? new Date(value).toLocaleString() : "Never";
@@ -143,6 +145,8 @@ const Saves = ({serverStatus}) => {
     const [deleteDialog, setDeleteDialog] = useState({isOpen: false, save: null});
     const [nameDialog, setNameDialog] = useState({isOpen: false, action: null, save: null, title: "", value: ""});
     const [restoreDialog, setRestoreDialog] = useState({isOpen: false, backup: null, value: ""});
+    const [freshRestartDialog, setFreshRestartDialog] = useState({isOpen: false, save: null});
+    const [isFreshRestarting, setIsFreshRestarting] = useState(false);
     const serverRunning = Boolean(serverStatus?.running);
 
     const updateList = () => {
@@ -201,6 +205,23 @@ const Saves = ({serverStatus}) => {
         await savesResource.restore(backup, value || backup.save_name);
         setRestoreDialog({...restoreDialog, isOpen: false});
         updateList();
+    }
+
+    const freshRestart = async (save) => {
+        setIsFreshRestarting(true);
+        try {
+            const res = await savesResource.freshRestart(save);
+            if (res) {
+                window.flash(`Fresh restart complete. New save: ${res.new_save_name}`, "success");
+                updateList();
+            }
+        } catch (err) {
+            const msg = err?.response?.data || err?.message || "Fresh restart failed";
+            window.flash(typeof msg === "string" ? msg : "Fresh restart failed", "error");
+        } finally {
+            setIsFreshRestarting(false);
+            setFreshRestartDialog({isOpen: false, save: null});
+        }
     }
 
     const openNameDialog = (action, save) => {
@@ -351,6 +372,9 @@ const Saves = ({serverStatus}) => {
                                         <FontAwesomeIcon className="text-gray-light cursor-pointer hover:text-orange mr-2"
                                                          title="Duplicate"
                                                          onClick={() => openNameDialog("duplicate", save)} icon={faClone}/>
+                                        <FontAwesomeIcon className={`${!serverRunning ? "text-gray cursor-not-allowed" : "text-gray-light cursor-pointer hover:text-orange"} mr-2`}
+                                                         title="Fresh Restart"
+                                                         onClick={() => serverRunning && setFreshRestartDialog({isOpen: true, save})} icon={faRotateRight}/>
                                         <FontAwesomeIcon className="text-red cursor-pointer hover:text-red-light mr-2"
                                                          title="Delete"
                                                          onClick={() => setDeleteDialog({isOpen: true, save})} icon={faTrashAlt}/>
@@ -440,6 +464,12 @@ const Saves = ({serverStatus}) => {
                         <Button size="sm" type="success" onClick={restoreBackup}>Restore</Button>
                     </>
                 }
+            />
+            <FreshRestartConfirmDialog
+                isOpen={freshRestartDialog.isOpen}
+                close={() => setFreshRestartDialog({isOpen: false, save: null})}
+                onSuccess={() => freshRestart(freshRestartDialog.save)}
+                saveName={freshRestartDialog.save?.name}
             />
         </>
     )

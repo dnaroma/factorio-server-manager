@@ -74,5 +74,9 @@ export default {
             saveFile: save
         });
         return response.data;
+    },
+    freshRestart: async (save) => {
+        const response = await client.post(`/api/saves/fresh-restart/${save.name}`);
+        return response.data;
     }
 }
