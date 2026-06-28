@@ -320,17 +320,30 @@ func FreshRestartSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mapGenSettingsFile, mapSettingsFile, err := factorio.ExtractMapGenSettings(server)
+	// Backup the save BEFORE any RCON commands, because /silent-command disables
+	// achievements for the running save. Backing up first ensures the backup
+	// captures a clean, achievement-eligible state.
+	backup, err := factorio.BackupSave(saveName)
 	if err != nil {
-		resp = fmt.Sprintf("Error extracting map settings: %s", err)
+		resp = fmt.Sprintf("Error backing up save: %s", err)
 		log.Println(resp)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	backup, err := factorio.BackupSave(saveName)
+	// Only allow fresh restart on the currently running save — RCON settings
+	// extraction is only meaningful for the active save, and the server will
+	// restart on the new generated save.
+	if server.Savefile != saveName {
+		resp = fmt.Sprintf("Save %q is not the currently running save (%q). Fresh restart is only available for the active save.", saveName, server.Savefile)
+		log.Println(resp)
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
+	mapGenSettingsFile, mapSettingsFile, err := factorio.ExtractMapGenSettings(server)
 	if err != nil {
-		resp = fmt.Sprintf("Error backing up save: %s", err)
+		resp = fmt.Sprintf("Error extracting map settings: %s", err)
 		log.Println(resp)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

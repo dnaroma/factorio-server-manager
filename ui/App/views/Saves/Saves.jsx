@@ -372,9 +372,17 @@ const Saves = ({serverStatus}) => {
                                         <FontAwesomeIcon className="text-gray-light cursor-pointer hover:text-orange mr-2"
                                                          title="Duplicate"
                                                          onClick={() => openNameDialog("duplicate", save)} icon={faClone}/>
-                                        <FontAwesomeIcon className={`${!serverRunning ? "text-gray cursor-not-allowed" : "text-gray-light cursor-pointer hover:text-orange"} mr-2`}
-                                                         title="Fresh Restart"
-                                                         onClick={() => serverRunning && setFreshRestartDialog({isOpen: true, save})} icon={faRotateRight}/>
+                                        {serverRunning && serverStatus?.savefile === save.name && (
+                                            <button
+                                                type="button"
+                                                className="bg-orange hover:glow-orange text-white text-xs font-bold py-1 px-2 mr-2 whitespace-nowrap"
+                                                title="Fresh Restart: regenerate this save with same map settings"
+                                                onClick={() => setFreshRestartDialog({isOpen: true, save})}
+                                            >
+                                                <FontAwesomeIcon icon={faRotateRight} className="mr-1"/>
+                                                Fresh Restart
+                                            </button>
+                                        )}
                                         <FontAwesomeIcon className="text-red cursor-pointer hover:text-red-light mr-2"
                                                          title="Delete"
                                                          onClick={() => setDeleteDialog({isOpen: true, save})} icon={faTrashAlt}/>
