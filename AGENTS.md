@@ -25,6 +25,7 @@
 ## Working Rules
 - Keep changes focused and avoid unrelated refactors.
 - Use `gofmt` for Go files before committing.
+- **Do NOT run `go build` or `go test` natively on macOS.** The backend deploys to Linux; some Go files use `_linux` build tags (e.g. `server_linux.go`) and will not compile on macOS. Always use `scripts/go-test-docker.sh` for Go compilation and testing — it runs inside a Linux Docker container with cached Go module/build volumes.
 - Do not edit generated frontend assets in `app/`; edit `ui/` and rebuild.
 - Do not commit local runtime files such as `conf.json`, `.env`, `dev/`, `dev_packs/`, `build/`, `node_modules/`, or generated bundles.
 - Preserve existing API routes and authentication behavior unless the task explicitly changes them.
