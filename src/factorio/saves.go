@@ -500,7 +500,10 @@ func buildCreateSaveArgs(filePath string, mapGenSettingsFile string, mapSettings
 // executes the command. RCON connections count as player "<server>" so this
 // gate applies even to headless servers.
 func sendRconCommand(server *Server, command string) (reqId int, err error) {
-	// confirm
+	// Factorio 2.0 requires confirming console commands that disable achievements.
+	// The first invocation shows the achievement-warning prompt and the second
+	// actually executes the command. RCON connections count as player "<server>"
+	// so this gate applies even to headless servers.
 	reqId, err = server.Rcon.Write(command)
 	if err != nil {
 		return reqId, fmt.Errorf("error sending RCON command (confirm): %v", err)
@@ -509,12 +512,12 @@ func sendRconCommand(server *Server, command string) (reqId int, err error) {
 
 	time.Sleep(500 * time.Millisecond)
 
-	// execute
 	reqId, err = server.Rcon.Write(command)
 	if err != nil {
 		return reqId, fmt.Errorf("error sending RCON command (execute): %v", err)
 	}
 	log.Printf("RCON command sent (execute), request id: %v", reqId)
+
 	return reqId, nil
 }
 
@@ -523,15 +526,8 @@ func ExtractMapGenSettings(server *Server) (mapGenSettingsPath string, mapSettin
 		return "", "", ErrRCONNotConnected
 	}
 
-	writeExchangeStringCommand := "/silent-command helpers.write_file('fsm-exchange-string.txt', game.get_map_exchange_string())"
-	if _, err = sendRconCommand(server, writeExchangeStringCommand); err != nil {
-		return "", "", err
-	}
-
-	time.Sleep(1 * time.Second)
-
-	writeSettingsCommand := "/silent-command local s = helpers.read_file('fsm-exchange-string.txt') local d = helpers.parse_map_exchange_string(s) helpers.write_file('fsm-map-gen-settings.json', helpers.table_to_json(d.map_gen_settings)) helpers.write_file('fsm-map-settings.json', helpers.table_to_json(d.map_settings))"
-	if _, err = sendRconCommand(server, writeSettingsCommand); err != nil {
+	writeParsedCommand := "/silent-command helpers.write_file('fsm-parsed-settings.json', helpers.table_to_json(helpers.parse_map_exchange_string(game.get_map_exchange_string())))"
+	if _, err = sendRconCommand(server, writeParsedCommand); err != nil {
 		return "", "", err
 	}
 
@@ -539,22 +535,29 @@ func ExtractMapGenSettings(server *Server) (mapGenSettingsPath string, mapSettin
 
 	config := bootstrap.GetConfig()
 	scriptOutputDir := filepath.Join(config.FactorioDir, "script-output")
-	exchangeStringPath := filepath.Join(scriptOutputDir, "fsm-exchange-string.txt")
+	parsedPath := filepath.Join(scriptOutputDir, "fsm-parsed-settings.json")
+
+	parsedData, err := os.ReadFile(parsedPath)
+	if err != nil {
+		return "", "", fmt.Errorf("parsed settings file not found: %w", err)
+	}
+
+	var parsed struct {
+		MapGenSettings json.RawMessage `json:"map_gen_settings"`
+		MapSettings    json.RawMessage `json:"map_settings"`
+	}
+	if err = json.Unmarshal(parsedData, &parsed); err != nil {
+		return "", "", fmt.Errorf("error parsing settings JSON: %w", err)
+	}
+
 	mapGenSettingsPath = filepath.Join(scriptOutputDir, "fsm-map-gen-settings.json")
 	mapSettingsPath = filepath.Join(scriptOutputDir, "fsm-map-settings.json")
 
-	exchangeStringInfo, err := os.Stat(exchangeStringPath)
-	if err != nil {
-		return "", "", fmt.Errorf("exchange string file not found: %w", err)
+	if err = os.WriteFile(mapGenSettingsPath, parsed.MapGenSettings, 0644); err != nil {
+		return "", "", fmt.Errorf("error writing map gen settings: %w", err)
 	}
-	if exchangeStringInfo.Size() == 0 {
-		return "", "", errors.New("exchange string file is empty")
-	}
-	if _, err := os.Stat(mapGenSettingsPath); err != nil {
-		return "", "", fmt.Errorf("map gen settings file not found: %w", err)
-	}
-	if _, err := os.Stat(mapSettingsPath); err != nil {
-		return "", "", fmt.Errorf("map settings file not found: %w", err)
+	if err = os.WriteFile(mapSettingsPath, parsed.MapSettings, 0644); err != nil {
+		return "", "", fmt.Errorf("error writing map settings: %w", err)
 	}
 
 	mapGenSettingsPath, err = filepath.Abs(mapGenSettingsPath)

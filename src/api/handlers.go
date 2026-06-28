@@ -363,7 +363,7 @@ func FreshRestartSave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	scriptOutputDir := filepath.Join(config.FactorioDir, "script-output")
-	os.Remove(filepath.Join(scriptOutputDir, "fsm-exchange-string.txt"))
+	os.Remove(filepath.Join(scriptOutputDir, "fsm-parsed-settings.json"))
 	os.Remove(filepath.Join(scriptOutputDir, "fsm-map-gen-settings.json"))
 	os.Remove(filepath.Join(scriptOutputDir, "fsm-map-settings.json"))
 
