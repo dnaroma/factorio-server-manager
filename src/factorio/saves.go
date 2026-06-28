@@ -21,6 +21,8 @@ import (
 
 const saveBackupDirName = "backups"
 
+var ErrRCONNotConnected = errors.New("RCON not connected")
+
 type Save struct {
 	Name     string        `json:"name"`
 	LastMod  time.Time     `json:"last_mod"`
@@ -457,13 +459,17 @@ func DuplicateSave(name, newName string) (*Save, error) {
 
 // Create savefiles for Factorio
 func CreateSave(filePath string) (string, error) {
+	return CreateSaveWithSettings(filePath, "", "")
+}
+
+func CreateSaveWithSettings(filePath string, mapGenSettingsFile string, mapSettingsFile string) (string, error) {
 	err := os.MkdirAll(filepath.Dir(filePath), 0755)
 	if err != nil {
 		log.Printf("Error in creating Factorio save: %s", err)
 		return "", err
 	}
 
-	args := []string{"--create", filePath}
+	args := buildCreateSaveArgs(filePath, mapGenSettingsFile, mapSettingsFile)
 	config := bootstrap.GetConfig()
 	cmdOutput, err := exec.Command(config.FactorioBinary, args...).Output()
 	if err != nil {
@@ -475,6 +481,74 @@ func CreateSave(filePath string) (string, error) {
 	result := string(cmdOutput)
 
 	return result, nil
+}
+
+func buildCreateSaveArgs(filePath string, mapGenSettingsFile string, mapSettingsFile string) []string {
+	args := []string{"--create", filePath}
+	if mapGenSettingsFile != "" {
+		args = append(args, "--map-gen-settings", mapGenSettingsFile)
+	}
+	if mapSettingsFile != "" {
+		args = append(args, "--map-settings", mapSettingsFile)
+	}
+	return args
+}
+
+func ExtractMapGenSettings(server *Server) (mapGenSettingsPath string, mapSettingsPath string, err error) {
+	if server.Rcon == nil {
+		return "", "", ErrRCONNotConnected
+	}
+
+	writeExchangeStringCommand := "/silent-command helpers.write_file('fsm-exchange-string.txt', game.get_map_exchange_string())"
+	reqId, err := server.Rcon.Write(writeExchangeStringCommand)
+	if err != nil {
+		log.Printf("Error sending rcon command: %s", err)
+		return "", "", fmt.Errorf("error sending RCON command: %v", err)
+	}
+	log.Printf("RCON command sent, request id: %v", reqId)
+
+	time.Sleep(1 * time.Second)
+
+	writeSettingsCommand := "/silent-command local s = helpers.read_file('fsm-exchange-string.txt') local d = helpers.parse_map_exchange_string(s) helpers.write_file('fsm-map-gen-settings.json', helpers.table_to_json(d.map_gen_settings)) helpers.write_file('fsm-map-settings.json', helpers.table_to_json(d.map_settings))"
+	reqId, err = server.Rcon.Write(writeSettingsCommand)
+	if err != nil {
+		log.Printf("Error sending rcon command: %s", err)
+		return "", "", fmt.Errorf("error sending RCON command: %v", err)
+	}
+	log.Printf("RCON command sent, request id: %v", reqId)
+
+	time.Sleep(2 * time.Second)
+
+	config := bootstrap.GetConfig()
+	scriptOutputDir := filepath.Join(config.FactorioDir, "script-output")
+	exchangeStringPath := filepath.Join(scriptOutputDir, "fsm-exchange-string.txt")
+	mapGenSettingsPath = filepath.Join(scriptOutputDir, "fsm-map-gen-settings.json")
+	mapSettingsPath = filepath.Join(scriptOutputDir, "fsm-map-settings.json")
+
+	exchangeStringInfo, err := os.Stat(exchangeStringPath)
+	if err != nil {
+		return "", "", fmt.Errorf("exchange string file not found: %w", err)
+	}
+	if exchangeStringInfo.Size() == 0 {
+		return "", "", errors.New("exchange string file is empty")
+	}
+	if _, err := os.Stat(mapGenSettingsPath); err != nil {
+		return "", "", fmt.Errorf("map gen settings file not found: %w", err)
+	}
+	if _, err := os.Stat(mapSettingsPath); err != nil {
+		return "", "", fmt.Errorf("map settings file not found: %w", err)
+	}
+
+	mapGenSettingsPath, err = filepath.Abs(mapGenSettingsPath)
+	if err != nil {
+		return "", "", fmt.Errorf("resolve map gen settings path: %w", err)
+	}
+	mapSettingsPath, err = filepath.Abs(mapSettingsPath)
+	if err != nil {
+		return "", "", fmt.Errorf("resolve map settings path: %w", err)
+	}
+
+	return mapGenSettingsPath, mapSettingsPath, nil
 }
 
 func GetLatestSave() (save Save, err error) {
