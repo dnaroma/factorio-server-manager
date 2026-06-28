@@ -287,6 +287,105 @@ func CreateSaveHandler(w http.ResponseWriter, r *http.Request) {
 	resp = fmt.Sprintf("Save %s created successfully. Command output: \n%s", saveName, cmdOut)
 }
 
+func FreshRestartSave(w http.ResponseWriter, r *http.Request) {
+	var resp interface{}
+	defer func() {
+		WriteResponse(w, resp)
+	}()
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+
+	vars := mux.Vars(r)
+	saveName := vars["save"]
+
+	saveName, err := factorio.ValidateSaveName(saveName)
+	if err != nil {
+		resp = fmt.Sprintf("Error validating save name: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	server := factorio.GetFactorioServer()
+
+	if !server.GetRunning() {
+		resp = "Server must be running to extract map settings via RCON"
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
+	if server.Rcon == nil {
+		resp = "RCON connection not available"
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	mapGenSettingsFile, mapSettingsFile, err := factorio.ExtractMapGenSettings(server)
+	if err != nil {
+		resp = fmt.Sprintf("Error extracting map settings: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	backup, err := factorio.BackupSave(saveName)
+	if err != nil {
+		resp = fmt.Sprintf("Error backing up save: %s", err)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	lifecycle, _ := factorio.LoadLifecycleConfig()
+	stopErr := server.StopWithTimeout(lifecycle.GracefulStopTimeout)
+	if stopErr != nil {
+		resp = fmt.Sprintf("Error stopping server: %s", stopErr)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	config := bootstrap.GetConfig()
+	baseName := saveName
+	if strings.HasSuffix(baseName, ".zip") {
+		baseName = baseName[:len(baseName)-4]
+	}
+	timestamp := time.Now().Format("20060102-150405")
+	newSaveName := fmt.Sprintf("%s-fresh-%s.zip", baseName, timestamp)
+	newSavePath := filepath.Join(config.FactorioSavesDir, newSaveName)
+
+	_, createErr := factorio.CreateSaveWithSettings(newSavePath, mapGenSettingsFile, mapSettingsFile)
+	if createErr != nil {
+		resp = fmt.Sprintf("Error creating new save: %s. Server is stopped — you can restart manually.", createErr)
+		log.Println(resp)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	scriptOutputDir := filepath.Join(config.FactorioDir, "script-output")
+	os.Remove(filepath.Join(scriptOutputDir, "fsm-exchange-string.txt"))
+	os.Remove(filepath.Join(scriptOutputDir, "fsm-map-gen-settings.json"))
+	os.Remove(filepath.Join(scriptOutputDir, "fsm-map-settings.json"))
+
+	lifecycle.StartupProfile.Savefile = newSaveName
+	factorio.SaveLifecycleConfig(lifecycle)
+	factorio.AppendLifecycleEvent("fresh-restart", fmt.Sprintf("Fresh restart: created new save %s from map settings of %s", newSaveName, saveName))
+
+	server.Savefile = newSaveName
+	go func() {
+		if err := server.Run(); err != nil {
+			log.Printf("Error starting server after fresh restart: %s", err)
+		}
+	}()
+
+	resp = map[string]interface{}{
+		"status":        "success",
+		"new_save_name": newSaveName,
+		"backup_name":   backup.Name,
+		"original_save": saveName,
+	}
+}
+
 func ListSaveBackups(w http.ResponseWriter, r *http.Request) {
 	var resp interface{}
 	defer func() {

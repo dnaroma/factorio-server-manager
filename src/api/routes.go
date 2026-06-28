@@ -220,6 +220,12 @@ var apiRoutes = Routes{
 		LoadModsFromSaveHandler,
 		true,
 	}, {
+		"FreshRestartSave",
+		"POST",
+		"/saves/fresh-restart/{save}",
+		FreshRestartSave,
+		true,
+	}, {
 		"LogTail",
 		"GET",
 		"/log/tail",
