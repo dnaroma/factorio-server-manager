@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.6] - 2026-06-28
+### Added
+- Fresh Restart feature on the Saves page: creates a new save with identical map generation settings (seed, terrain, resources) but zero progress
+- Backend `ExtractMapGenSettings()` extracts map exchange string via RCON two-step Lua flow
+- Backend `CreateSaveWithSettings()` creates saves with preserved `map_gen_settings` and `map_settings` files
+- `POST /api/saves/fresh-restart/{save}` endpoint that extracts settings, backs up the original save, stops the server, creates the fresh save, and restarts
+- Fresh Restart button (↻ icon) on Saves page, enabled when server is running, disabled when stopped
+- Confirmation dialog with warning about save replacement before proceeding
+- Auto-backup of original save before regeneration
+
 ## [0.2.5] - 2026-06-27
 ### Fixed
 - "Update all mods" no longer causes mods to disappear with "mod file for X doesn't exist" error
