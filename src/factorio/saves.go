@@ -769,6 +769,9 @@ func PruneSaveBackups(retention int) error {
 
 	for _, saveBackups := range bySave {
 		sortSaveBackupsNewestFirst(saveBackups)
+		if len(saveBackups) <= retention {
+			continue
+		}
 		for _, backup := range saveBackups[retention:] {
 			path, err := saveBackupPath(backup.Name)
 			if err != nil {

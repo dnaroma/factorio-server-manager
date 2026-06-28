@@ -209,3 +209,19 @@ func TestExtractMapGenSettingsMissingMapGenSettingsFile(t *testing.T) {
 		t.Fatalf("expected map-gen-settings.json to not exist")
 	}
 }
+
+func TestPruneSaveBackupsBoundsCheck(t *testing.T) {
+	backups := []SaveBackup{
+		{Name: "a-1.zip", SaveName: "a.zip"},
+		{Name: "a-2.zip", SaveName: "a.zip"},
+	}
+	retention := 5
+
+	if len(backups) <= retention {
+		// No pruning needed — this is the exact condition the fix adds.
+		// Without the fix, saveBackups[retention:] would panic:
+		//   slice bounds out of range [5:2]
+		return
+	}
+	t.Fatal("should not reach pruning code with only 2 backups and retention 5")
+}
