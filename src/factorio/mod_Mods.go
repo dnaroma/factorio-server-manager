@@ -245,19 +245,31 @@ func IsBuiltInMod(modName string) bool {
 	return ok
 }
 
+var modPrefixes = []string{"!", "?", "+", "(?)", "~"}
+var modNonRequiredPrefixes = []string{"?", "!", "(?)"}
+var modVersionEqualityOperators = []string{"<", "<=", "=", ">=", ">"}
+
 func requiredDependencyName(dependency string) (string, bool) {
-	fields := strings.Fields(strings.TrimSpace(dependency))
-	if len(fields) == 0 {
-		return "", false
+	// There are multiple edge conditions that need to be handled
+	// * Mod name CAN have spaces in name
+	// * Dependency string MAY OR MAY NOT have spaces between prefix, name and version
+
+	dependency = strings.TrimSpace(dependency)
+	for _, prefix := range modNonRequiredPrefixes {
+		if strings.HasPrefix(dependency, prefix) {
+			return "", false
+		}
 	}
 
-	name := fields[0]
-	if name == "?" || name == "!" || name == "~" || name == "(?)" {
-		return "", false
+	name := dependency
+	for _, prefix := range modPrefixes {
+		name = strings.TrimPrefix(name, prefix)
 	}
-	if strings.HasPrefix(name, "?") || strings.HasPrefix(name, "!") || strings.HasPrefix(name, "~") {
-		return "", false
+	for _, operator := range modVersionEqualityOperators {
+		name, _, _ = strings.Cut(name, operator)
 	}
+	name = strings.TrimSpace(name)
+
 	if IsBuiltInMod(name) {
 		return "", false
 	}
